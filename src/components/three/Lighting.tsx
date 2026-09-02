@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { Color, type DirectionalLight, type PointLight } from 'three';
+import { Color, type DirectionalLight } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { accent, light, neutral } from '@/lib/design/tokens';
 import { scrollStore } from '@/lib/scrollStore';
@@ -10,10 +10,8 @@ import { clamp } from '@/lib/math';
 
 /** Pre-resolved colours -- the frame loop must never allocate. */
 const SCENE_ACCENTS = SCENES.map((s) => new Color(accent[s.accent].base));
-const SCENE_GLOWS = SCENES.map((s) => new Color(accent[s.accent].glow));
 
 const currentRim = new Color(accent.pharma.base);
-const currentPractical = new Color(accent.pharma.glow);
 const targetColor = new Color();
 const upperColor = new Color();
 
@@ -41,7 +39,6 @@ export interface LightingProps {
  */
 export default function Lighting({ shadows }: LightingProps) {
   const rim = useRef<DirectionalLight>(null);
-  const practical = useRef<PointLight>(null);
 
   useFrame(() => {
     // Blend the accent between the two nearest chapters.
@@ -59,24 +56,11 @@ export default function Lighting({ shadows }: LightingProps) {
     targetColor.lerp(upperColor, mix);
     currentRim.lerp(targetColor, 0.05);
 
-    targetColor.copy(SCENE_GLOWS[lower]);
-    upperColor.copy(SCENE_GLOWS[upper]);
-    targetColor.lerp(upperColor, mix);
-    currentPractical.lerp(targetColor, 0.05);
-
     if (rim.current) rim.current.color.copy(currentRim);
-    if (practical.current) practical.current.color.copy(currentPractical);
   });
 
   return (
     <>
-      {/*
-        Ambient is deliberately near-zero. On a dark set, ambient light is the
-        fastest way to make everything look flat and cheap -- volume has to come
-        from the directional sources.
-      */}
-      <ambientLight intensity={0.18} color={light.ambient} />
-
       {/* KEY — large, warm, high and camera-right. */}
       <directionalLight
         position={[5.5, 8, 6]}
@@ -105,25 +89,23 @@ export default function Lighting({ shadows }: LightingProps) {
         color={accent.pharma.base}
       />
 
-      {/* BOUNCE — dim upward return from the imagined chamber floor. */}
+      {/*
+        BOUNCE — dim upward return from the imagined chamber floor, and the
+        scene's ambient floor in one light.
+
+        Four sources total, and that ceiling is a performance decision as much
+        as a lighting one: every light is evaluated by every material on every
+        pixel it covers, so on a fragment-bound scene carrying a dozen physical
+        surfaces the light count multiplies the most expensive thing in the
+        frame. A separate ambient term was doing what this already does with
+        no directionality, and the close accent light was doing what the rim
+        does with less reach.
+      */}
       <hemisphereLight
-        args={[neutral.n06, light.bounce, 0.5]}
+        args={[neutral.n06, light.bounce, 0.85]}
         position={[0, -4, 0]}
       />
 
-      {/*
-        PRACTICAL — a small, close accent source sitting just off the subject.
-        Short range and fast decay so it grades the object without lighting the
-        whole corridor.
-      */}
-      <pointLight
-        ref={practical}
-        position={[1.6, 1.2, 2.8]}
-        intensity={9}
-        distance={14}
-        decay={2}
-        color={accent.pharma.glow}
-      />
     </>
   );
 }

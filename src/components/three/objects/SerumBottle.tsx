@@ -33,6 +33,7 @@ import {
   type VialOptions,
 } from '@/lib/geometry/vialProfile';
 import { createVialLabelTexture } from '@/lib/textures/vialLabel';
+import { cachedGeometry, cachedTexture } from '@/lib/geometry/cache';
 import {
   sampleSurface,
   surfaceArea,
@@ -203,20 +204,21 @@ const SerumBottle = forwardRef<SerumBottleHandle, SerumBottleProps>(
 
     const geometries = useMemo(() => {
       const r = options.radialSegments;
+      // Four lathes, shared across every chapter that shows a vial.
+      const key = `vial:${level}:${bodyRadius}:${bodyHeight}:${neckRadius}:${wallThickness}`;
       return {
-        glass: latheFrom(createVialGlassProfile(options), r),
-        liquid: latheFrom(createVialLiquidProfile(options), r),
-        stopper: latheFrom(createVialStopperProfile(options), r),
-        cap: latheFrom(createVialCapProfile(options), r),
+        glass: cachedGeometry(`${key}:glass`, () =>
+          latheFrom(createVialGlassProfile(options), r)),
+        liquid: cachedGeometry(`${key}:liquid`, () =>
+          latheFrom(createVialLiquidProfile(options), r)),
+        stopper: cachedGeometry(`${key}:stopper`, () =>
+          latheFrom(createVialStopperProfile(options), r)),
+        cap: cachedGeometry(`${key}:cap`, () =>
+          latheFrom(createVialCapProfile(options), r)),
       };
-    }, [options]);
+    }, [options, level, bodyRadius, bodyHeight, neckRadius, wallThickness]);
 
-    useEffect(
-      () => () => {
-        Object.values(geometries).forEach((g) => g.dispose());
-      },
-      [geometries],
-    );
+    // Cached and shared; disposal here would break every other chapter.
 
     /* -------------------------------------------------------------------- */
     /* Label                                                                */
@@ -225,18 +227,20 @@ const SerumBottle = forwardRef<SerumBottleHandle, SerumBottleProps>(
     const labelTexture = useMemo(
       () =>
         label
-          ? createVialLabelTexture({
-              name: labelName,
-              strength: labelStrength,
-              lot: labelLot,
-              width: budget.tier === 'low' ? 512 : 1024,
-              height: budget.tier === 'low' ? 128 : 256,
-            })
+          ? cachedTexture(
+              `vial-label:${labelName}:${labelStrength}:${labelLot}:${budget.tier}`,
+              () =>
+                createVialLabelTexture({
+                  name: labelName,
+                  strength: labelStrength,
+                  lot: labelLot,
+                  width: budget.tier === 'low' ? 512 : 1024,
+                  height: budget.tier === 'low' ? 128 : 256,
+                }),
+            )
           : null,
       [label, labelName, labelStrength, labelLot, budget.tier],
     );
-
-    useEffect(() => () => labelTexture?.dispose(), [labelTexture]);
 
     /* -------------------------------------------------------------------- */
     /* Materials                                                            */

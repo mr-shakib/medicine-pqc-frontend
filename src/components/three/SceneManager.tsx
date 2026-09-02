@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import CameraRig from '@/components/three/CameraRig';
 import Lighting from '@/components/three/Lighting';
 import {
@@ -21,7 +21,7 @@ import Scene08ThreatDetected from '@/components/three/scenes/Scene08ThreatDetect
 import Scene09Final from '@/components/three/scenes/Scene09Final';
 import { scrollStore } from '@/lib/scrollStore';
 import { SCENES, sceneAt, sceneDistance } from '@/lib/scenes';
-import { damp } from '@/lib/math';
+import { damp, frameDelta } from '@/lib/math';
 import type { QualityBudget } from '@/lib/quality';
 import type { SceneComponentProps } from '@/types';
 import { type Group } from 'three';
@@ -53,13 +53,13 @@ const MOUNT_RADIUS = 1;
  *
  * Comfortably wider than any transition needs, so nothing ever pops.
  *
- * The margin is generous on purpose. This is driven by the DAMPED scroll value,
- * the same one the camera follows, which lags behind a large jump — an anchor
- * click, or a fast scrub. Too tight a radius and the lag can hide a chapter the
- * camera can still see. The gate is only ever an optimisation, so it errs
- * toward drawing.
+ * Wide enough that a transition always has both of its chapters, and no wider.
+ * This was briefly 1.25, set while chasing a reversibility failure that turned
+ * out to be an artefact of the test harness rather than of this gate — and the
+ * extra margin meant a whole additional chapter was being rasterised through
+ * most of the piece.
  */
-const DRAW_RADIUS = 1.25;
+const DRAW_RADIUS = 0.85;
 
 /**
  * Frames a newly mounted chapter is drawn for before the gate may hide it, so
@@ -99,6 +99,19 @@ export default function SceneManager({
   );
   const lastCenter = useRef(0);
 
+  /*
+    Drops the render resolution while the page is scrolling.
+
+    `AdaptiveDpr` has been mounted since the first phase but was doing nothing:
+    it watches `performance.current`, which only moves when something calls
+    `regress()`, and nothing ever did. On a site whose entire cost is paid
+    during scrolling, that was the single most valuable optimisation available
+    and it was inert.
+  */
+  const regress = useThree((state) => state.performance.regress);
+  /** Previous raw progress, for detecting motion in the frame loop. */
+  const lastProgress = useRef(0);
+
   const mountAround = useCallback((center: number) => {
     const scenes: number[] = [];
     for (let i = center - MOUNT_RADIUS; i <= center + MOUNT_RADIUS; i++) {
@@ -108,7 +121,24 @@ export default function SceneManager({
   }, []);
 
   useFrame((_, delta) => {
-    const dt = Math.min(delta, 1 / 20);
+    const dt = frameDelta(delta);
+
+    /*
+      Any real scroll motion regresses the renderer for a moment, restoring
+      full resolution once the view is at rest.
+
+      Motion is measured HERE, frame to frame, rather than read from
+      `scrollStore.velocity`. That field is only written inside the scroll
+      handler, so once scrolling stops it holds its final non-zero value
+      forever — regressing on it left the page permanently at reduced
+      resolution, which is worse than not regressing at all.
+    */
+    const moved = Math.abs(scrollStore.progress - lastProgress.current);
+    lastProgress.current = scrollStore.progress;
+    if (moved > 1e-5) regress();
+
+    // Decay the shared velocity too, so nothing else reads a stale value.
+    scrollStore.velocity *= Math.exp(-6 * dt);
 
     // Single point where scroll smoothing happens for the whole application.
     scrollStore.smooth = reducedMotion

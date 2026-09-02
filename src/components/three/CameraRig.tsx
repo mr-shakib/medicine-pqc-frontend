@@ -9,7 +9,7 @@ import {
   responsiveFov,
   sampleCameraPath,
 } from '@/lib/cameraPath';
-import { damp } from '@/lib/math';
+import { damp, frameDelta } from '@/lib/math';
 
 /** Module-level scratch vectors -- the frame loop must never allocate. */
 const desiredPosition = new Vector3();
@@ -57,8 +57,10 @@ export default function CameraRig({
   // so that mutating them stays inside the render loop, where it belongs.
   useFrame((state, delta) => {
     const { camera, size } = state;
-    // Clamp delta so a backgrounded tab does not teleport the camera on return.
-    const dt = Math.min(delta, 1 / 20);
+    // Guards against a backgrounded tab returning with a huge delta, without
+    // being so tight that a low frame rate turns into camera lag. See
+    // MAX_FRAME_DELTA.
+    const dt = frameDelta(delta);
     const keys = getCameraKeys(mobile);
     sampleCameraPath(keys, scrollStore.smooth, desiredPosition, desiredTarget);
 

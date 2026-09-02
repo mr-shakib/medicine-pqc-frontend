@@ -8,7 +8,7 @@ import {
   useRef,
 } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, MeshPhysicalMaterial, type LatheGeometry } from 'three';
+import { Group, MeshPhysicalMaterial } from 'three';
 import { accent, neutral } from '@/lib/design/tokens';
 import { gelatin } from '@/lib/design/materials';
 import { attachDissolve, createDissolveUniforms } from '@/lib/design/dissolve';
@@ -16,6 +16,7 @@ import {
   CAPSULE_TESSELLATION,
   createCapsuleHalfGeometry,
 } from '@/lib/geometry/capsuleProfile';
+import { cachedGeometry } from '@/lib/geometry/cache';
 import {
   sampleSurface,
   surfaceArea,
@@ -174,19 +175,26 @@ const Capsule = forwardRef<CapsuleHandle, CapsuleProps>(function Capsule(
     // The body runs longer than the remainder so the two overlap at the join.
     const bodyLength = length - capLength + length * 0.08;
 
+    // Shared across every chapter that shows a capsule — see lib/geometry/cache.
+    const key = `capsule:${level}:${radius}:${length}:${capRatio}:${wallThickness}`;
+
     return {
-      capGeometry: createCapsuleHalfGeometry({
-        ...tess,
-        radius: capRadius,
-        length: capLength,
-        wallThickness,
-      }),
-      bodyGeometry: createCapsuleHalfGeometry({
-        ...tess,
-        radius: bodyRadius,
-        length: bodyLength,
-        wallThickness,
-      }),
+      capGeometry: cachedGeometry(`${key}:cap`, () =>
+        createCapsuleHalfGeometry({
+          ...tess,
+          radius: capRadius,
+          length: capLength,
+          wallThickness,
+        }),
+      ),
+      bodyGeometry: cachedGeometry(`${key}:body`, () =>
+        createCapsuleHalfGeometry({
+          ...tess,
+          radius: bodyRadius,
+          length: bodyLength,
+          wallThickness,
+        }),
+      ),
       layout: {
         // Each half is modelled with its dome at y = 0 opening toward +y, so
         // the cap is simply flipped and parked at the far end.
@@ -231,13 +239,8 @@ const Capsule = forwardRef<CapsuleHandle, CapsuleProps>(function Capsule(
   /* Disposal — lathe geometries and patched materials are ours to release   */
   /* ---------------------------------------------------------------------- */
 
-  useEffect(
-    () => () => {
-      (bodyGeometry as LatheGeometry).dispose();
-      (capGeometry as LatheGeometry).dispose();
-    },
-    [bodyGeometry, capGeometry],
-  );
+  // Geometry is cached and shared; disposing it here would pull it out from
+  // under every other chapter still using it.
 
   useEffect(
     () => () => {

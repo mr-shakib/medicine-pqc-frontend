@@ -57,3 +57,22 @@ export const seededRandom = (seed: number): number => {
   const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
   return x - Math.floor(x);
 };
+
+/**
+ * Largest frame delta any damped motion is allowed to see, in seconds.
+ *
+ * The clamp exists so a backgrounded tab, which returns with a delta of many
+ * seconds, cannot teleport the camera on the frame it comes back. But set too
+ * tight it does real harm: at anything below 1/CLAMP frames per second the
+ * damping advances less than wall-clock time, so the camera falls progressively
+ * behind the scroll and a merely low frame rate turns into visible LAG on top
+ * of it — the two compound.
+ *
+ * At 1/10 the motion stays true down to 10fps and the teleport guard still
+ * holds, since a tab restore is orders of magnitude larger.
+ */
+export const MAX_FRAME_DELTA = 1 / 10;
+
+/** Clamp a frame delta for use in frame-rate-independent damping. */
+export const frameDelta = (delta: number): number =>
+  delta < MAX_FRAME_DELTA ? delta : MAX_FRAME_DELTA;

@@ -41,12 +41,38 @@ export const BUDGETS: Record<QualityTier, QualityBudget> = {
   },
   high: {
     tier: 'high',
-    dpr: [1, 2],
-    particles: 9000,
+    /*
+      Capped at 1.5, not 2.
+
+      On a high-DPI display, 2.0 means four times the fragments of 1.0 — and
+      this piece is fragment-bound, not vertex-bound: dark, soft, physically
+      shaded surfaces over a full screen. The visible difference between 1.5
+      and 2.0 on content with no fine detail or small text is very close to
+      nothing; the cost difference is 44% of every pixel.
+    */
+    dpr: [1, 1.5],
+    particles: 6000,
     detail: 2,
     postProcessing: true,
-    transmission: true,
-    shadows: true,
+    /*
+      Off, on every tier.
+
+      A transmissive material makes the renderer draw the WHOLE SCENE again
+      into a backbuffer so the surface has something to refract. The vial has
+      transmissive glass, so every chapter containing one paid a second full
+      render — and during a chapter transition, with two vials mounted, it paid
+      a third. That is the single most expensive thing in the piece and it
+      bought a refraction visible only on close inspection of one object; the
+      non-transmissive glass keeps the silhouette, the edge and the specular,
+      which is what actually reads as glass.
+    */
+    transmission: false,
+    /*
+      Off. The objects float in an unlit void with no surface to receive a
+      shadow, so the shadow map was rendering every frame to be sampled by
+      almost nothing.
+    */
+    shadows: false,
     samples: 4,
   },
 };

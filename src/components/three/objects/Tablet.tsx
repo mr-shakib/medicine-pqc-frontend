@@ -19,6 +19,7 @@ import {
   type TabletOptions,
 } from '@/lib/geometry/tabletProfile';
 import { createTabletMarkingTexture } from '@/lib/textures/tabletMarking';
+import { cachedGeometry, cachedTexture } from '@/lib/geometry/cache';
 import { sampleSurface, type SurfaceSample } from '@/lib/geometry/surfaceSampler';
 import { clamp } from '@/lib/math';
 import { useQuality } from '@/components/three/QualityProvider';
@@ -168,10 +169,16 @@ const Tablet = forwardRef<TabletHandle, TabletProps>(function Tablet(
     [level, radius, bandHeight, capHeight, bevel],
   );
 
-  const geometry = useMemo(() => createTabletGeometry(options), [options]);
+  const geometry = useMemo(
+    () =>
+      cachedGeometry(
+        `tablet:${level}:${radius}:${bandHeight}:${capHeight}:${bevel}`,
+        () => createTabletGeometry(options),
+      ),
+    [options, level, radius, bandHeight, capHeight, bevel],
+  );
   const dimensions = useMemo(() => solveTabletProfile(options), [options]);
 
-  useEffect(() => () => geometry.dispose(), [geometry]);
 
   /* ---------------------------------------------------------------------- */
   /* Relief map                                                             */
@@ -180,18 +187,20 @@ const Tablet = forwardRef<TabletHandle, TabletProps>(function Tablet(
   const relief = useMemo(
     () =>
       score || marking
-        ? createTabletMarkingTexture({
+        ? cachedTexture(
+            `tablet-relief:${score}:${marking}:${budget.tier}`,
+            () =>
+              createTabletMarkingTexture({
             score,
             marking,
             // Low tier gets a smaller map: it is a bump map on a small object,
             // and the resolution is invisible well before the memory is.
-            size: budget.tier === 'low' ? 256 : 512,
-          })
+                size: budget.tier === 'low' ? 256 : 512,
+              }),
+          )
         : null,
     [score, marking, budget.tier],
   );
-
-  useEffect(() => () => relief?.dispose(), [relief]);
 
   /* ---------------------------------------------------------------------- */
   /* Material                                                               */
