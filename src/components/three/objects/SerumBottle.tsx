@@ -9,7 +9,6 @@ import {
 } from 'react';
 import { useFrame } from '@react-three/fiber';
 import {
-  DoubleSide,
   FrontSide,
   Group,
   MeshPhysicalMaterial,
@@ -290,7 +289,7 @@ const SerumBottle = forwardRef<SerumBottleHandle, SerumBottleProps>(
         liquid: wrap(
           new MeshPhysicalMaterial({
             color: serumColor,
-            roughness: 0.14,
+            roughness: 0.1,
             metalness: 0,
             /*
               Opaque, and deliberately not transmissive.
@@ -308,8 +307,14 @@ const SerumBottle = forwardRef<SerumBottleHandle, SerumBottleProps>(
             */
             transparent: false,
             opacity: 1,
-            clearcoat: 1,
-            clearcoatRoughness: 0.08,
+            /*
+              No clearcoat. It is a second full specular lobe evaluated per
+              fragment, and this surface sits behind a glass wall that already
+              carries a hard clearcoat of its own — the highlight the eye reads
+              on the liquid is the glass's, not the liquid's. A tight base
+              roughness keeps the meniscus lit.
+            */
+            clearcoat: 0,
             envMapIntensity: 1.4,
           }),
           'vial-liquid-dissolve',
@@ -332,7 +337,9 @@ const SerumBottle = forwardRef<SerumBottleHandle, SerumBottleProps>(
           new MeshPhysicalMaterial({
             ...aluminium,
             color: capColor,
-            side: DoubleSide,
+            // FrontSide: the cap profile lathes a genuine inner and outer
+            // surface, so DoubleSide was shading every pixel of it twice.
+            side: FrontSide,
           }),
           'vial-cap-dissolve',
         ),
@@ -343,8 +350,11 @@ const SerumBottle = forwardRef<SerumBottleHandle, SerumBottleProps>(
             map: labelTexture,
             roughness: 0.78,
             metalness: 0,
-            clearcoat: 0.12,
-            side: DoubleSide,
+            // No clearcoat: at 0.12 on matte label stock it was invisible, and
+            // a lobe costs the same whether its weight is 0.12 or 1.
+            // FrontSide: the label is applied to the outside of the glass and
+            // is never seen from within.
+            side: FrontSide,
           }),
           'vial-label-dissolve',
         ),

@@ -42,15 +42,19 @@ export const BUDGETS: Record<QualityTier, QualityBudget> = {
   high: {
     tier: 'high',
     /*
-      Capped at 1.5, not 2.
+      Capped at 1.25.
 
       On a high-DPI display, 2.0 means four times the fragments of 1.0 — and
       this piece is fragment-bound, not vertex-bound: dark, soft, physically
-      shaded surfaces over a full screen. The visible difference between 1.5
-      and 2.0 on content with no fine detail or small text is very close to
-      nothing; the cost difference is 44% of every pixel.
+      shaded surfaces over a full screen, with no fine detail or small text in
+      the canvas to resolve. Against 2.0 that is a 61% cut in fragments for a
+      difference the content cannot show.
+
+      It is a fixed ceiling rather than an adaptive one on purpose. Scaling
+      resolution during scroll is cheaper still, and it makes the frame
+      visibly pop every time it changes.
     */
-    dpr: [1, 1.5],
+    dpr: [1, 1.25],
     particles: 6000,
     detail: 2,
     postProcessing: true,

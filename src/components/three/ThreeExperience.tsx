@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { AdaptiveDpr, PerformanceMonitor, Preload } from '@react-three/drei';
+import { PerformanceMonitor, Preload } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
 import SceneManager from '@/components/three/SceneManager';
 import ScrollController from '@/components/three/ScrollController';
@@ -100,16 +100,6 @@ export default function ThreeExperience() {
             */
             transmissionResolutionScale: 0.5,
           }}
-          /*
-            Resolution scaling while the view is moving.
-
-            `performance.min` is the fraction of DPR the renderer drops to when
-            something calls `regress()`, restoring after `debounce` ms of quiet.
-            Scrolling is exactly the moment to spend less: the frame is in
-            motion, fine detail cannot be resolved anyway, and it is the only
-            moment the cost is actually felt.
-          */
-          performance={{ min: 0.6, max: 1, debounce: 220 }}
           camera={{
             fov: responsiveFov(1.6),
             near: 0.1,
@@ -137,11 +127,19 @@ export default function ThreeExperience() {
           </PerformanceMonitor>
 
           {/*
-            Not `pixelated`: that snaps the drawing buffer to whole steps and
-            the downscale reads as chunky. Interpolated, the resolution change
-            during a scroll is essentially invisible.
+            No AdaptiveDpr.
+
+            Dropping resolution while scrolling is the textbook fix for a
+            scroll-driven scene, and on this content it is unusable: the canvas
+            keeps a fixed CSS size, so every change rescales the drawing buffer
+            and the whole frame visibly pops — twice per scroll gesture, once
+            down and once back. On large, soft, dark surfaces that reads as the
+            UI flashing.
+
+            The resolution is therefore fixed, and the fragment cost it was
+            chasing is taken out permanently instead: a lower DPR ceiling and
+            fewer clearcoat lobes. Both are invisible; a resolution pop is not.
           */}
-          <AdaptiveDpr />
           <Preload all />
         </Canvas>
       </div>

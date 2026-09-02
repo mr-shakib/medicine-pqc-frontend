@@ -59,7 +59,17 @@ const COMPOSITION = {
   },
 } as const;
 
-const ASSEMBLY_SCALE = 3.4;
+/*
+  Reduced from 3.4.
+
+  This chapter was consistently the slowest in the piece while scrolling, and
+  the reason is not what it draws — chapter 09 carries the same three objects
+  plus an entire lattice and runs twice as fast. It is how much of the screen
+  they cover: the composition was scaled up to work as a hero frame, and on a
+  fragment-bound scene cost is paid per pixel. Pulling it back trades a little
+  presence for roughly a third of the shading work.
+*/
+const ASSEMBLY_SCALE = 2.9;
 
 /**
  * SCENE 05 — PRODUCT CONVERGENCE.

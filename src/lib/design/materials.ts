@@ -115,7 +115,8 @@ export function ceramic(budget: QualityBudget) {
     color: CERAMIC_COLOR,
     roughness: 0.52,
     metalness: 0,
-    clearcoat: budget.tier === 'low' ? 0 : 0.35,
+    // High tier only — see the liquid in SerumBottle for the reasoning.
+    clearcoat: budget.tier === 'high' ? 0.35 : 0,
     clearcoatRoughness: 0.5,
     envMapIntensity: 0.55,
   } as const;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import CameraRig from '@/components/three/CameraRig';
 import Lighting from '@/components/three/Lighting';
 import {
@@ -108,9 +108,6 @@ export default function SceneManager({
     during scrolling, that was the single most valuable optimisation available
     and it was inert.
   */
-  const regress = useThree((state) => state.performance.regress);
-  /** Previous raw progress, for detecting motion in the frame loop. */
-  const lastProgress = useRef(0);
 
   const mountAround = useCallback((center: number) => {
     const scenes: number[] = [];
@@ -123,21 +120,8 @@ export default function SceneManager({
   useFrame((_, delta) => {
     const dt = frameDelta(delta);
 
-    /*
-      Any real scroll motion regresses the renderer for a moment, restoring
-      full resolution once the view is at rest.
-
-      Motion is measured HERE, frame to frame, rather than read from
-      `scrollStore.velocity`. That field is only written inside the scroll
-      handler, so once scrolling stops it holds its final non-zero value
-      forever — regressing on it left the page permanently at reduced
-      resolution, which is worse than not regressing at all.
-    */
-    const moved = Math.abs(scrollStore.progress - lastProgress.current);
-    lastProgress.current = scrollStore.progress;
-    if (moved > 1e-5) regress();
-
-    // Decay the shared velocity too, so nothing else reads a stale value.
+    // Velocity is only written by the scroll handler, so decay it here or it
+    // keeps its last non-zero value forever once scrolling stops.
     scrollStore.velocity *= Math.exp(-6 * dt);
 
     // Single point where scroll smoothing happens for the whole application.
