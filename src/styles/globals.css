@@ -1,0 +1,302 @@
+@import "tailwindcss";
+
+/* ========================================================================== */
+/* DESIGN TOKENS                                                              */
+/* Mirrors src/lib/design/tokens.ts. Both layers must grade identically.      */
+/* See DESIGN_SYSTEM.md for the reasoning behind every value.                 */
+/* ========================================================================== */
+@theme {
+  /* --- Neutral ramp: cool-cast, hue ~220 ---------------------------------- */
+  --color-n00: #06070a;
+  --color-n01: #090b0f;
+  --color-n02: #0d0f15;
+  --color-n03: #11141b;
+  --color-n04: #161a22;
+  --color-n05: #1c212a;
+  --color-n06: #242a35;
+  --color-n07: #2f3542;
+  --color-n08: #414957;
+  --color-n09: #5c6474;
+  --color-n10: #8a93a3;
+  --color-n11: #b9c0cc;
+  --color-n12: #e9ecf1;
+
+  /* --- Accents: saturation 23-45%, lightness 51-58% ----------------------- */
+  --color-pharma-deep: #6e5030;
+  --color-pharma: #be8b4e;
+  --color-pharma-light: #dfb98a;
+  --color-pharma-glow: #f2dcbc;
+
+  --color-analysis-deep: #1f4c56;
+  --color-analysis: #5c9aa8;
+  --color-analysis-light: #96c4ce;
+  --color-analysis-glow: #c6e2e8;
+
+  --color-lattice-deep: #33356b;
+  --color-lattice: #6e70b8;
+  --color-lattice-light: #a3a5d8;
+  --color-lattice-glow: #cfd0ec;
+
+  --color-alert-deep: #6e2a28;
+  --color-alert: #c0605a;
+  --color-alert-light: #dc908b;
+  --color-alert-glow: #f0c0bc;
+
+  --color-verified-deep: #2c5240;
+  --color-verified: #6fa588;
+  --color-verified-light: #a3c9b4;
+  --color-verified-glow: #cfe3d8;
+
+  /* --- Fluid type scale --------------------------------------------------- */
+  --text-display-xl: clamp(2.75rem, 7.5vw, 7rem);
+  --text-display-l: clamp(2.25rem, 5vw, 4.25rem);
+  --text-display-m: clamp(1.75rem, 3.2vw, 2.75rem);
+  --text-lead: clamp(1.0625rem, 1.5vw, 1.3125rem);
+  --text-body: clamp(0.9375rem, 1.05vw, 1.0625rem);
+  --text-caption: 0.8125rem;
+  --text-label: 0.6875rem;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* --- Motion ------------------------------------------------------------- */
+  --ease-out-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-premium: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ========================================================================== */
+/* BASE                                                                       */
+/* ========================================================================== */
+:root {
+  color-scheme: dark;
+  /* Accent of the active chapter, written each chapter by ScrollController. */
+  --scene-accent: #be8b4e;
+}
+
+html {
+  /* The 3D layer owns motion; never let the browser smooth-scroll on top. */
+  scroll-behavior: auto;
+  /* Anchor jumps must clear the fixed header. */
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background-color: var(--color-n00);
+  color: var(--color-n12);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Stop iOS rubber-banding from fighting ScrollTrigger. */
+  overscroll-behavior-y: none;
+}
+
+::selection {
+  background-color: var(--scene-accent);
+  color: var(--color-n00);
+}
+
+:focus-visible {
+  outline: 1px solid var(--scene-accent);
+  outline-offset: 4px;
+  border-radius: 1px;
+}
+
+/* ========================================================================== */
+/* TYPE HIERARCHY                                                             */
+/*                                                                            */
+/* Three weights in the entire system. Display sizes run LIGHT with negative   */
+/* tracking -- at 7rem, weight is loud enough on its own and letterforms need  */
+/* pulling together, not pushing apart. Body runs regular with open leading.   */
+/* ========================================================================== */
+
+@utility display-xl {
+  font-size: var(--text-display-xl);
+  font-weight: 250;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  color: var(--color-n12);
+  text-wrap: balance;
+}
+
+@utility display-l {
+  font-size: var(--text-display-l);
+  font-weight: 250;
+  letter-spacing: -0.032em;
+  line-height: 0.96;
+  color: var(--color-n12);
+  text-wrap: balance;
+}
+
+@utility display-m {
+  font-size: var(--text-display-m);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--color-n12);
+  text-wrap: balance;
+}
+
+/**
+ * The statement voice. Reserved for a single line that carries a whole moment.
+ *
+ * Uppercase inverts the usual display rules: caps have no ascender/descender
+ * rhythm to help the eye, so they need POSITIVE tracking and more leading, not
+ * the negative tracking that suits sentence-case display type. The weight drops
+ * to 250 because capitals already read as emphatic -- adding weight on top is
+ * what tips a statement over into a games-console title card.
+ */
+@utility statement {
+  font-size: clamp(2rem, 5.2vw, 4.6rem);
+  font-weight: 250;
+  letter-spacing: 0.012em;
+  line-height: 1.12;
+  text-transform: uppercase;
+  color: var(--color-n12);
+  text-wrap: balance;
+}
+
+/** Subtitle sitting directly under a display line. */
+@utility lead {
+  font-size: var(--text-lead);
+  font-weight: 400;
+  letter-spacing: -0.011em;
+  line-height: 1.4;
+  color: var(--color-n11);
+  text-wrap: pretty;
+}
+
+@utility body-copy {
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--color-n10);
+  text-wrap: pretty;
+}
+
+/**
+ * Instrument label. Monospace, widely tracked, uppercase -- the typographic
+ * signal for "this is measured data", used for chapter numbers, readouts and
+ * technical annotation. Never for prose.
+ */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+/** Numeric readout. Tabular figures so digits do not jitter as they count. */
+@utility readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Opening entrance                                                            */
+/*                                                                             */
+/* The first chapter resolves out of darkness in 3D; the copy has to arrive the */
+/* same way or the two layers feel disconnected. A slow rise and fade, staggered */
+/* behind the canvas fade-in.                                                   */
+/* -------------------------------------------------------------------------- */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.enter {
+  animation: rise-in 1.4s var(--ease-out-premium) both;
+}
+
+.enter-delay-1 {
+  animation-delay: 0.35s;
+}
+.enter-delay-2 {
+  animation-delay: 0.65s;
+}
+.enter-delay-3 {
+  animation-delay: 1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation: none;
+  }
+}
+
+/* ========================================================================== */
+/* SURFACES                                                                   */
+/*                                                                            */
+/* Glass in the DOM layer is optical, not frosted decoration: a hairline edge  */
+/* at low opacity plus a barely-there wash. Heavy blur panels are the fastest  */
+/* way to make an interface look like a dashboard.                            */
+/* ========================================================================== */
+
+@utility glass-panel {
+  background-color: color-mix(in oklab, var(--color-n04) 62%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-n12) 7%, transparent);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+}
+
+/** A single hairline in the neutral ramp's border step. */
+@utility hairline-b {
+  border-bottom: 1px solid color-mix(in oklab, var(--color-n12) 6%, transparent);
+}
+
+/* ========================================================================== */
+/* CINEMATIC GRADE                                                            */
+/*                                                                            */
+/* A vignette and top/bottom scrims sit between the canvas and the copy. They  */
+/* do two jobs at once: they focus the eye centre-frame like a real lens, and  */
+/* they guarantee text contrast over whatever the 3D layer happens to render.  */
+/* ========================================================================== */
+
+@utility grade-vignette {
+  background: radial-gradient(
+    120% 90% at 50% 45%,
+    transparent 38%,
+    color-mix(in oklab, var(--color-n00) 55%, transparent) 78%,
+    color-mix(in oklab, var(--color-n00) 88%, transparent) 100%
+  );
+}
+
+@utility grade-scrim-top {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-n00) 82%, transparent),
+    transparent
+  );
+}
+
+@utility grade-scrim-bottom {
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--color-n00) 88%, transparent),
+    transparent
+  );
+}
+
+/* ========================================================================== */
+/* REDUCED MOTION                                                             */
+/* ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
