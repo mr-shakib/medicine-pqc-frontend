@@ -52,7 +52,7 @@ const PLACES = [
 ];
 
 /**
- * SCENE 09 — THE FINAL PROTECTION.
+ * SCENE 08 — THE FINAL PROTECTION.
  *
  * The resolution. All three forms held inside a completed lattice, each
  * carrying a still verification mark, the field stable, the whole assembly
@@ -68,7 +68,7 @@ const PLACES = [
  * an authentic one held steady; that grammar is kept, so stillness here means
  * exactly what it meant there.
  */
-export default function Scene09Final({ definition }: SceneComponentProps) {
+export default function Scene08Final({ definition }: SceneComponentProps) {
   const slots = useRef<(Group | null)[]>([]);
   const rings = useRef<InstancedMesh>(null);
   const capsule = useRef<CapsuleHandle>(null);

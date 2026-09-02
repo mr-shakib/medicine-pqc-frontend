@@ -17,8 +17,7 @@ import Scene04TabletToSerum from '@/components/three/scenes/Scene04TabletToSerum
 import Scene05ProductConvergence from '@/components/three/scenes/Scene05ProductConvergence';
 import Scene06AIDetection from '@/components/three/scenes/Scene06AIDetection';
 import Scene07PQCProtection from '@/components/three/scenes/Scene07PQCProtection';
-import Scene08ThreatDetected from '@/components/three/scenes/Scene08ThreatDetected';
-import Scene09Final from '@/components/three/scenes/Scene09Final';
+import Scene08Final from '@/components/three/scenes/Scene08Final';
 import { scrollStore } from '@/lib/scrollStore';
 import { SCENES, sceneAt, sceneDistance } from '@/lib/scenes';
 import { damp, frameDelta } from '@/lib/math';
@@ -35,8 +34,7 @@ const SCENE_COMPONENTS: React.ComponentType<SceneComponentProps>[] = [
   Scene05ProductConvergence,
   Scene06AIDetection,
   Scene07PQCProtection,
-  Scene08ThreatDetected,
-  Scene09Final,
+  Scene08Final,
 ];
 
 /** How many scenes either side of the framed one stay mounted. */

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import {
   AdditiveBlending,
+  BufferAttribute,
+  BufferGeometry,
   CapsuleGeometry,
   Color,
   DoubleSide,
@@ -18,6 +20,8 @@ import {
 } from 'three';
 import { accent } from '@/lib/design/tokens';
 import {
+  featureFragment,
+  featureVertex,
   scanPlaneFragment,
   scanPlaneVertex,
   signatureFragment,
@@ -75,6 +79,7 @@ export default function AnalysisField({
   const rings = useRef<InstancedMesh>(null);
   const signatures = useRef<InstancedMesh>(null);
   const scanPlane = useRef<Mesh>(null);
+  const features = useRef<import('three').Points>(null);
 
   const proxyItems = useMemo(() => items.filter((i) => i.proxy), [items]);
 
@@ -127,6 +132,84 @@ export default function AnalysisField({
     return g;
   }, [items]);
 
+  /**
+   * Feature points: a small cloud around each product that streams down into
+   * its trace as the sweep reaches it.
+   */
+  const PER_ITEM = 26;
+
+  const featureGeometry = useMemo(() => {
+    const count = items.length * PER_ITEM;
+    const positions = new Float32Array(count * 3);
+    const targets = new Float32Array(count * 3);
+    const itemY = new Float32Array(count);
+    const seeds = new Float32Array(count);
+    const authentic = new Float32Array(count);
+
+    items.forEach((item, index) => {
+      const [ix, iy, iz] = item.position;
+      const spread = 0.34 * (item.scale ?? 1);
+
+      for (let n = 0; n < PER_ITEM; n++) {
+        const i = index * PER_ITEM + n;
+        const k = (i + 1) * 3.7;
+
+        // Start on a shell around the product, not at its centre: features are
+        // read off a surface.
+        const u = seededRandom(k * 1.1) * 2 - 1;
+        const theta = seededRandom(k * 2.3) * Math.PI * 2;
+        const radial = Math.sqrt(Math.max(0, 1 - u * u));
+
+        positions[i * 3] = ix + Math.cos(theta) * radial * spread;
+        positions[i * 3 + 1] = iy + u * spread;
+        positions[i * 3 + 2] = iz + Math.sin(theta) * radial * spread;
+
+        // Land spread along the width of that product's trace.
+        targets[i * 3] = ix + (seededRandom(k * 5.1) - 0.5) * 0.7;
+        targets[i * 3 + 1] = iy - 0.42;
+        targets[i * 3 + 2] = iz;
+
+        itemY[i] = iy;
+        seeds[i] = seededRandom(k * 7.9);
+        authentic[i] = item.authentic ? 1 : 0;
+      }
+    });
+
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(positions, 3));
+    g.setAttribute('aTarget', new BufferAttribute(targets, 3));
+    g.setAttribute('aItemY', new BufferAttribute(itemY, 1));
+    g.setAttribute('aSeed', new BufferAttribute(seeds, 1));
+    g.setAttribute('aAuthentic', new BufferAttribute(authentic, 1));
+    return g;
+  }, [items]);
+
+  const featureMaterial = useMemo(
+    () =>
+      new ShaderMaterial({
+        vertexShader: featureVertex,
+        fragmentShader: featureFragment,
+        transparent: true,
+        blending: AdditiveBlending,
+        depthWrite: false,
+        uniforms: {
+          uScanY: { value: -99 },
+          uReveal: { value: 0 },
+          uTime: { value: 0 },
+          /*
+            Tuned against the 150/-z falloff in the vertex stage at this
+            chapter's viewing distance. At 0.16 these landed under two pixels
+            and the whole extraction layer was invisible.
+          */
+          uSize: { value: 0.9 },
+          uPixelRatio: { value: 1 },
+          uColor: { value: new Color(accent.analysis.light) },
+          uCounterfeitColor: { value: new Color(accent.alert.light) },
+        },
+      }),
+    [],
+  );
+
   const signatureMaterial = useMemo(
     () =>
       new ShaderMaterial({
@@ -173,10 +256,13 @@ export default function AnalysisField({
       signatureGeometry.dispose();
       signatureMaterial.dispose();
       scanMaterial.dispose();
+      featureGeometry.dispose();
+      featureMaterial.dispose();
     },
     [
       proxyGeometry, proxyMaterial, ringGeometry, ringMaterial,
       signatureGeometry, signatureMaterial, scanMaterial,
+      featureGeometry, featureMaterial,
     ],
   );
 
@@ -211,14 +297,36 @@ export default function AnalysisField({
     const reveal = clamp(getReveal());
     const population = clamp(getPopulation());
 
+    /**
+     * How far a verdict has resolved for one item.
+     *
+     * A counterfeit resolves on a later, slower window than a genuine product.
+     * The delay is the point: a classifier settles a clear case immediately and
+     * takes longer over an ambiguous one, and that hesitation is what makes the
+     * failure read as a judgement rather than a label that was already attached.
+     */
+    const verdictFor = (item: AnalysisItem) =>
+      smoothstep(
+        item.position[1] - 0.05 + (item.authentic ? 0 : 0.35),
+        item.position[1] + (item.authentic ? 0.3 : 0.95),
+        scanY,
+      ) * reveal;
+
     // --- Proxy products ---------------------------------------------------
     if (proxies.current) {
       proxyItems.forEach((item, i) => {
         const grow = population * (item.scale ?? 1);
+        const judged = verdictFor(item);
         dummy.position.set(...item.position);
+        /*
+          Each product turns as it is read, then settles. A field where nothing
+          moves under the sweep reads as a photograph being coloured in; a
+          quarter-turn makes each one look inspected.
+        */
+        const presenting = Math.sin(Math.min(judged, 1) * Math.PI);
         dummy.rotation.set(
-          0.4 + Math.sin(time * 0.3 + i) * 0.06,
-          i * 1.7 + time * 0.06,
+          0.4 + Math.sin(time * 0.3 + i) * 0.06 - presenting * 0.25,
+          i * 1.7 + time * 0.06 + presenting * 0.9,
           0.2,
         );
         dummy.scale.setScalar(Math.max(grow, 0.0001));
@@ -230,11 +338,6 @@ export default function AnalysisField({
           up front would answer the question the scan is there to ask -- the
           whole point is that they are visually indistinguishable until analysed.
         */
-        const judged = smoothstep(
-          item.position[1] - 0.05,
-          item.position[1] + 0.3,
-          scanY,
-        ) * reveal;
 
         /*
           Every product starts the same pharmaceutical amber and is only tinted
@@ -264,9 +367,7 @@ export default function AnalysisField({
     // --- Verdict rings ----------------------------------------------------
     if (rings.current) {
       items.forEach((item, i) => {
-        const judged =
-          smoothstep(item.position[1] - 0.05, item.position[1] + 0.3, scanY) *
-          reveal;
+        const judged = verdictFor(item);
 
         // Contracts onto the product as the verdict lands.
         const radius = (item.scale ?? 1) * (0.62 - judged * 0.14);
@@ -304,6 +405,15 @@ export default function AnalysisField({
       signatures.current.visible = reveal > 0.004;
     }
 
+    // --- Feature extraction ----------------------------------------------
+    if (features.current) {
+      const uniforms = (features.current.material as ShaderMaterial).uniforms;
+      uniforms.uScanY.value = scanY;
+      uniforms.uReveal.value = reveal;
+      uniforms.uTime.value = time;
+      features.current.visible = reveal > 0.004;
+    }
+
     // --- The sweep --------------------------------------------------------
     if (scanPlane.current) {
       const uniforms = (scanPlane.current.material as ShaderMaterial).uniforms;
@@ -335,6 +445,13 @@ export default function AnalysisField({
       <instancedMesh
         ref={signatures}
         args={[signatureGeometry, signatureMaterial, items.length]}
+        frustumCulled={false}
+      />
+
+      <points
+        ref={features}
+        geometry={featureGeometry}
+        material={featureMaterial}
         frustumCulled={false}
       />
 

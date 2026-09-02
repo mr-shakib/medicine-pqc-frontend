@@ -135,3 +135,83 @@ export const signatureFragment = /* glsl */ `
     gl_FragColor = vec4(color * alpha, 1.0);
   }
 `;
+
+/* -------------------------------------------------------------------------- */
+/* Feature extraction                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Points lifting off a product and streaming into its signature trace.
+ *
+ * This is the step the chapter was asserting rather than showing. A sweep
+ * passed over a product and a verdict appeared; nothing depicted the reading
+ * itself. Here each particle leaves the surface as the scan reaches it, arcs
+ * down to that product's trace, and lands — so the trace is visibly made OUT OF
+ * the object rather than merely displayed beneath it.
+ *
+ * One draw call for every product in the field.
+ */
+export const featureVertex = /* glsl */ `
+  attribute vec3 aTarget;
+  attribute float aItemY;
+  attribute float aSeed;
+  attribute float aAuthentic;
+
+  uniform float uScanY;
+  uniform float uReveal;
+  uniform float uTime;
+  uniform float uSize;
+  uniform float uPixelRatio;
+
+  varying float vAlpha;
+  varying float vAuthentic;
+
+  void main() {
+    // Each particle is driven by the sweep reaching ITS OWN product, so the
+    // whole field staggers itself with no per-item work on the CPU.
+    // A generous window. Narrower, the extraction for a given row begins and
+    // finishes inside a fraction of the sweep and is over before it registers.
+    float reach = smoothstep(aItemY - 0.55, aItemY + 1.05, uScanY);
+
+    // A short per-particle delay, so features leave the surface in a stream
+    // rather than all at once.
+    float t = clamp((reach - aSeed * 0.35) / 0.65, 0.0, 1.0);
+    float eased = t * t * (3.0 - 2.0 * t);
+
+    vec3 p = mix(position, aTarget, eased);
+
+    // Arc outward on the way down: a straight line reads as a wipe, a curve
+    // reads as something being carried.
+    float arc = sin(eased * 3.14159265);
+    p.x += arc * (aSeed - 0.5) * 0.5;
+    p.z += arc * 0.25;
+    p.y += arc * 0.12;
+
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    gl_PointSize = uSize * uPixelRatio * (150.0 / -mv.z) * (0.6 + aSeed * 0.6);
+    gl_Position = projectionMatrix * mv;
+
+    // Present while in flight only: fully arrived features have become the
+    // trace, and leaving them lit would clutter the verdict.
+    vAlpha = sin(eased * 3.14159265) * uReveal;
+    vAuthentic = aAuthentic;
+  }
+`;
+
+export const featureFragment = /* glsl */ `
+  precision mediump float;
+
+  uniform vec3 uColor;
+  uniform vec3 uCounterfeitColor;
+
+  varying float vAlpha;
+  varying float vAuthentic;
+
+  void main() {
+    if (vAlpha < 0.01) discard;
+    float d = length(gl_PointCoord - 0.5);
+    float dot_ = smoothstep(0.5, 0.1, d);
+    vec3 color = mix(uCounterfeitColor, uColor, vAuthentic);
+    gl_FragColor = vec4(color * dot_ * vAlpha * 0.9, 1.0);
+  }
+`;

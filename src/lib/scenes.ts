@@ -252,7 +252,7 @@ export const SCENES: readonly SceneDefinition[] = [
     */
     cameraOffset: [3.2, -0.6, 15.5],
     mobileCameraOffset: [1.4, -0.4, 20],
-    scrollWeight: 1.8,
+    scrollWeight: 3,
     cameraArrival: 0.06,
     cameraExit: {
       at: 0.66,
@@ -262,40 +262,8 @@ export const SCENES: readonly SceneDefinition[] = [
     statement: true,
   },
   {
-    id: 'threat-detected',
-    index: 7,
-    label: 'Threat',
-    title: 'Counterfeit detected.',
-    /*
-      The palette's one deliberate break to alert.
-
-      Red has been held back for exactly this — it appears nowhere else in the
-      piece except the two failed products in chapter 06 — so when the boundary
-      refuses something, the colour itself carries the meaning before anything
-      else is read.
-    */
-    accent: 'alert',
-    anchor: [2, 2, -288],
-    /*
-      Wide enough to hold the protected volume AND the duplicate outside it.
-      The whole point of the chapter is a spatial relationship — something is
-      outside a boundary and stays outside — which cannot be read from a frame
-      that only contains the inside.
-    */
-    cameraOffset: [-2.2, 1.1, 17.8],
-    mobileCameraOffset: [-1.1, 0.8, 22.5],
-    scrollWeight: 1.2,
-    cameraArrival: 0.06,
-    cameraExit: {
-      at: 0.66,
-      offset: [-3.4, 1.7, 18.8],
-      mobileOffset: [-1.7, 1.2, 23.5],
-    },
-    statement: true,
-  },
-  {
     id: 'final',
-    index: 8,
+    index: 7,
     label: 'Sealed',
     title: 'Verify.\nProtect.\nTrust.',
     subtitle:
@@ -336,8 +304,7 @@ export const SCENE_COUNT = SCENES.length;
  *     Core            0%      Convergence    55%
  *     Capsule        10%      AI             65%
  *     Capsule→Tablet 25%      PQC            75%
- *     Tablet→Serum   40%      Threat         84%
- *                              Final          90%
+ *     Tablet→Serum   40%      Final          90%
  *
  * Since progress runs from the top of the first section to the top of the LAST
  * one, a chapter is framed at `offset / (total - 1)`. Setting that equal to the
