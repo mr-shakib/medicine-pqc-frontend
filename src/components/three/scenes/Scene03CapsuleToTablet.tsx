@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Group } from 'three';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
 import Tablet, { type TabletHandle } from '@/components/three/objects/Tablet';
 import TransformParticles from '@/components/three/objects/TransformParticles';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { alignByBearing, type SurfaceSample } from '@/lib/geometry/surfaceSampler';
@@ -64,17 +64,6 @@ const ASSEMBLY_SCALE = 2;
 export default function Scene03CapsuleToTablet({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
-  /**
-   * Animation happens on an inner node, never on the anchored one.
-   *
-   * Writing `group.position.y` directly would overwrite the anchor's own y and
-   * silently drop the whole assembly out of the camera's aim — which is exactly
-   * what it did before this split: the chapter sits at y = 1, the drift wrote
-   * ±0.05, and the object rendered a full world unit below where the camera was
-   * looking.
-   */
-  const drift = useRef<Group>(null);
   const capsule = useRef<CapsuleHandle>(null);
   const tablet = useRef<TabletHandle>(null);
   const progress = useSceneProgress(definition.index);
@@ -213,18 +202,10 @@ export default function Scene03CapsuleToTablet({
     }
 
     /* --- 11: the assembly itself drifts slowly --------------------------- */
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.32) * 0.05;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.05} driftSpeed={0.32}>
         {/* Both objects are built at scale 1 so the sampled clouds, the meshes
             and the particles all share one coordinate space. */}
         <Capsule ref={capsule} dissolvable />
@@ -240,7 +221,6 @@ export default function Scene03CapsuleToTablet({
               size={particleSize}
           />
         ) : null}
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }

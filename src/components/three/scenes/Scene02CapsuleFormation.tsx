@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Group, type PointLight } from 'three';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
 import Motes from '@/components/three/objects/Motes';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
@@ -86,11 +87,16 @@ const CAPSULE_SCALE = 2.2;
 export default function Scene02CapsuleFormation({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
   const capsule = useRef<CapsuleHandle>(null);
   const guides = useRef<Group>(null);
   const guideRings = useRef<(Group | null)[]>([]);
   const seam = useRef<PointLight>(null);
+  /**
+   * Its own node, inside the anchor: this chapter rotates and lifts the
+   * whole assembly, which must never touch the anchored transform.
+   */
+  const group = useRef<Group>(null);
+
   const progress = useSceneProgress(definition.index);
   const budget = useQuality();
 
@@ -222,10 +228,8 @@ export default function Scene02CapsuleFormation({
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-    >
+    <SceneAnchor definition={definition} driftAmount={0.08} driftSpeed={0.5}>
+      <group ref={group}>
       {/*
         The halves are driven directly through the handle rather than through
         `setSeparation`, because formation needs full control of position and
@@ -276,6 +280,7 @@ export default function Scene02CapsuleFormation({
         getReveal={motesReveal}
         getConverge={motesConverge}
       />
-    </group>
+      </group>
+    </SceneAnchor>
   );
 }

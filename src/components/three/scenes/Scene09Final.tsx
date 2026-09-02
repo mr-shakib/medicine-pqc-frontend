@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import type { Group } from 'three';
 import {
   MeshStandardMaterial,
   Object3D,
   TorusGeometry,
-  type Group,
   type InstancedMesh,
 } from 'three';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
@@ -17,6 +17,7 @@ import SerumBottle, {
 import CryptoLattice from '@/components/three/objects/CryptoLattice';
 import Motes from '@/components/three/objects/Motes';
 import { LightPool } from '@/components/three/effects';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
@@ -68,8 +69,6 @@ const PLACES = [
  * exactly what it meant there.
  */
 export default function Scene09Final({ definition }: SceneComponentProps) {
-  const group = useRef<Group>(null);
-  const drift = useRef<Group>(null);
   const slots = useRef<(Group | null)[]>([]);
   const rings = useRef<InstancedMesh>(null);
   const capsule = useRef<CapsuleHandle>(null);
@@ -152,18 +151,10 @@ export default function Scene09Final({ definition }: SceneComponentProps) {
     capsule.current?.setSeparation(0);
     vial.current?.setFill(0.78);
 
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.16) * 0.03;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.03} driftSpeed={0.16}>
         <group
           ref={(node) => {
             slots.current[0] = node;
@@ -229,7 +220,6 @@ export default function Scene09Final({ definition }: SceneComponentProps) {
           distance={11}
           decay={2}
         />
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }

@@ -10,6 +10,7 @@ import SerumBottle, {
 } from '@/components/three/objects/SerumBottle';
 import Motes from '@/components/three/objects/Motes';
 import { LightPool } from '@/components/three/effects';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
@@ -77,9 +78,7 @@ const ASSEMBLY_SCALE = 3.4;
 export default function Scene05ProductConvergence({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
   /** Animation node — never the anchored one. */
-  const drift = useRef<Group>(null);
 
   const capsuleSlot = useRef<Group>(null);
   const tabletSlot = useRef<Group>(null);
@@ -144,19 +143,10 @@ export default function Scene05ProductConvergence({
     vial.current?.setDissolve(0);
     vial.current?.setFill(0.78);
 
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.24) * 0.04;
-      drift.current.rotation.y = Math.sin(time * 0.09) * 0.05;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.04} driftSpeed={0.24} swayAmount={0.05}>
         <group ref={capsuleSlot}>
           <Capsule ref={capsule} />
         </group>
@@ -206,7 +196,6 @@ export default function Scene05ProductConvergence({
           seed={23}
           getReveal={motesReveal}
         />
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }

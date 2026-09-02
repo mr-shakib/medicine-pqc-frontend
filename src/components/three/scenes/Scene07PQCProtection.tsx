@@ -10,6 +10,7 @@ import SerumBottle, {
 } from '@/components/three/objects/SerumBottle';
 import CryptoLattice from '@/components/three/objects/CryptoLattice';
 import Motes from '@/components/three/objects/Motes';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
@@ -57,8 +58,6 @@ const GATHER = {
 export default function Scene07PQCProtection({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
-  const drift = useRef<Group>(null);
   const capsuleSlot = useRef<Group>(null);
   const vialSlot = useRef<Group>(null);
   const tabletSlot = useRef<Group>(null);
@@ -117,18 +116,10 @@ export default function Scene07PQCProtection({
     capsule.current?.setSeparation(0);
     vial.current?.setFill(0.78);
 
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.2) * 0.04;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.04} driftSpeed={0.2}>
         <group ref={capsuleSlot}>
           <Capsule ref={capsule} scale={0.55} rotation={[0.14, 0.5, 0.34]} />
         </group>
@@ -168,7 +159,6 @@ export default function Scene07PQCProtection({
           distance={12}
           decay={2}
         />
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }

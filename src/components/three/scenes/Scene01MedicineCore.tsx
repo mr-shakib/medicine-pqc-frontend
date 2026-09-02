@@ -4,6 +4,7 @@ import { useCallback, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
 import MedicineCore from '@/components/three/objects/MedicineCore';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { smoothstep } from '@/lib/math';
@@ -28,7 +29,12 @@ import type { SceneComponentProps } from '@/types';
 export default function Scene01MedicineCore({
   definition,
 }: SceneComponentProps) {
+  /**
+   * Its own node, inside the anchor: this chapter animates position and
+   * scale directly, which must never touch the anchored transform.
+   */
   const group = useRef<Group>(null);
+
   const progress = useSceneProgress(definition.index);
   const budget = useQuality();
 
@@ -76,15 +82,14 @@ export default function Scene01MedicineCore({
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-    >
+    <SceneAnchor definition={definition} driftAmount={0.03} driftSpeed={0.2}>
+      <group ref={group}>
       <MedicineCore
         getReveal={getReveal}
         getRetract={getRetract}
         motes={Math.round(budget.particles * 0.06)}
       />
-    </group>
+      </group>
+    </SceneAnchor>
   );
 }

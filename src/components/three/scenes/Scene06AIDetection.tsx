@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Group } from 'three';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
 import Tablet, { type TabletHandle } from '@/components/three/objects/Tablet';
 import SerumBottle, {
@@ -11,6 +10,7 @@ import SerumBottle, {
 import AnalysisField, {
   type AnalysisItem,
 } from '@/components/three/objects/AnalysisField';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { accent } from '@/lib/design/tokens';
 import { lerp, range, smoothstep } from '@/lib/math';
@@ -76,8 +76,6 @@ const ITEMS: AnalysisItem[] = [
 export default function Scene06AIDetection({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
-  const drift = useRef<Group>(null);
   const capsule = useRef<CapsuleHandle>(null);
   const tablet = useRef<TabletHandle>(null);
   const vial = useRef<SerumBottleHandle>(null);
@@ -105,26 +103,16 @@ export default function Scene06AIDetection({
     [progress],
   );
 
-  useFrame((state) => {
-    const time = state.clock.elapsedTime;
+  useFrame(() => {
 
     // Nothing here transforms; clear any residue from the chapters that do.
     capsule.current?.setSeparation(0);
     vial.current?.setFill(0.78);
 
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.22) * 0.035;
-      drift.current.rotation.y = Math.sin(time * 0.08) * 0.04;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.035} driftSpeed={0.22} swayAmount={0.04}>
         {/* The three known-good products, in the middle row. */}
         <group position={heroes[0].position} scale={heroes[0].scale}>
           <Capsule ref={capsule} scale={0.62} rotation={[0.2, 0.5, 0.3]} />
@@ -153,7 +141,6 @@ export default function Scene06AIDetection({
           distance={12}
           decay={2}
         />
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }

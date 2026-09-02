@@ -122,7 +122,7 @@ export const SCENES: readonly SceneDefinition[] = [
     // of the top of frame at the moment it appears.
     mobileCameraOffset: [7.7, 1.5, 9.2],
     // Two viewport heights: six distinct beats need room to breathe.
-    scrollWeight: 2,
+    scrollWeight: 3,
     cameraArrival: 0.2,
     // The orbit continues past the seal, holding the finished capsule in view.
     cameraExit: {
@@ -147,7 +147,7 @@ export const SCENES: readonly SceneDefinition[] = [
     cameraOffset: [-2.4, 0.9, 6.2],
     mobileCameraOffset: [-1.2, 0.7, 8.6],
     // Two viewport heights: eleven beats need the room.
-    scrollWeight: 2,
+    scrollWeight: 3,
     /*
       The camera is on its mark almost as soon as the chapter is framed, and
       holds there for the whole transformation. The approach itself covers the
@@ -175,7 +175,7 @@ export const SCENES: readonly SceneDefinition[] = [
     // The close mark, held steady for the whole transformation.
     cameraOffset: [-3, 0.6, 5.8],
     mobileCameraOffset: [-1.6, 0.5, 8.4],
-    scrollWeight: 2,
+    scrollWeight: 3,
     cameraArrival: 0.05,
     // The reveal: a lift and a pull back once the vial is whole.
     cameraExit: {
@@ -252,7 +252,7 @@ export const SCENES: readonly SceneDefinition[] = [
     */
     cameraOffset: [3.2, -0.6, 15.5],
     mobileCameraOffset: [1.4, -0.4, 20],
-    scrollWeight: 2,
+    scrollWeight: 1.8,
     cameraArrival: 0.06,
     cameraExit: {
       at: 0.66,
@@ -284,7 +284,7 @@ export const SCENES: readonly SceneDefinition[] = [
     */
     cameraOffset: [-2.2, 1.1, 17.8],
     mobileCameraOffset: [-1.1, 0.8, 22.5],
-    scrollWeight: 2,
+    scrollWeight: 1.2,
     cameraArrival: 0.06,
     cameraExit: {
       at: 0.66,
@@ -304,7 +304,7 @@ export const SCENES: readonly SceneDefinition[] = [
     anchor: [0, 0, -314],
     cameraOffset: [1.4, 0.9, 14.5],
     mobileCameraOffset: [0.7, 0.7, 18.5],
-    scrollWeight: 2,
+    scrollWeight: 3,
     cameraArrival: 0.08,
     /*
       The last camera move in the piece: a slow lift and settle. It resolves
@@ -329,6 +329,20 @@ export const SCENE_COUNT = SCENES.length;
  * Chapters are not all the same length. Each has a `scrollWeight` in viewport
  * heights (default 1), so the scroll spine is the sum of those weights and a
  * chapter's DOM section is exactly that tall.
+ *
+ * The weights are not chosen by feel — they are solved so that each chapter is
+ * framed at an exact point in the scroll:
+ *
+ *     Core            0%      Convergence    55%
+ *     Capsule        10%      AI             65%
+ *     Capsule→Tablet 25%      PQC            75%
+ *     Tablet→Serum   40%      Threat         84%
+ *                              Final          90%
+ *
+ * Since progress runs from the top of the first section to the top of the LAST
+ * one, a chapter is framed at `offset / (total - 1)`. Setting that equal to the
+ * target for every chapter fixes all nine weights, and the final chapter
+ * absorbs the one viewport height that can never be scrolled past.
  *
  * The scrollable distance is one viewport shorter than the spine -- you cannot
  * scroll the last viewport past itself -- so with weights summing to W, global

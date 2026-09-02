@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Group, Mesh, MeshBasicMaterial, PointLight } from 'three';
+import type { Group } from 'three';
+import type { Mesh, MeshBasicMaterial, PointLight } from 'three';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
 import Tablet from '@/components/three/objects/Tablet';
 import SerumBottle, {
@@ -12,6 +13,7 @@ import CryptoLattice from '@/components/three/objects/CryptoLattice';
 import AnalysisField, {
   type AnalysisItem,
 } from '@/components/three/objects/AnalysisField';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
@@ -72,8 +74,6 @@ const COMPARISON: AnalysisItem[] = [
 export default function Scene08ThreatDetected({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
-  const drift = useRef<Group>(null);
   const intruder = useRef<Group>(null);
   const containment = useRef<Mesh>(null);
   const flare = useRef<PointLight>(null);
@@ -169,18 +169,10 @@ export default function Scene08ThreatDetected({
     capsule.current?.setSeparation(0);
     vial.current?.setFill(0.78);
 
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.2) * 0.035;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.035} driftSpeed={0.2}>
         {/* The protected ecosystem, carried over intact from chapter 07. */}
         <group position={[-0.52, 0.16, 0.26]}>
           <Capsule ref={capsule} scale={0.55} rotation={[0.14, 0.5, 0.34]} />
@@ -230,7 +222,6 @@ export default function Scene08ThreatDetected({
           decay={2}
           visible={false}
         />
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }

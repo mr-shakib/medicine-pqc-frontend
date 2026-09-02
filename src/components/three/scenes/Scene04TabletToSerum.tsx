@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Group } from 'three';
 import Tablet, { type TabletHandle } from '@/components/three/objects/Tablet';
 import SerumBottle, {
   type SerumBottleHandle,
 } from '@/components/three/objects/SerumBottle';
 import TransformParticles from '@/components/three/objects/TransformParticles';
+import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import {
@@ -69,9 +69,7 @@ const FULL_FILL = 0.78;
 export default function Scene04TabletToSerum({
   definition,
 }: SceneComponentProps) {
-  const group = useRef<Group>(null);
   /** Animation lives here, never on the anchored node — see chapter 03. */
-  const drift = useRef<Group>(null);
   const tablet = useRef<TabletHandle>(null);
   const vial = useRef<SerumBottleHandle>(null);
   const progress = useSceneProgress(definition.index);
@@ -154,10 +152,9 @@ export default function Scene04TabletToSerum({
 
   const spin = useRef(0);
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     const dt = Math.min(delta, 1 / 20);
     const t = progress.local();
-    const time = state.clock.elapsedTime;
 
     const tabletHandle = tablet.current;
     const vialHandle = vial.current;
@@ -195,18 +192,10 @@ export default function Scene04TabletToSerum({
       }
     }
 
-    if (drift.current) {
-      drift.current.position.y = Math.sin(time * 0.3) * 0.05;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      position={definition.anchor as unknown as [number, number, number]}
-      scale={ASSEMBLY_SCALE}
-    >
-      <group ref={drift}>
+    <SceneAnchor definition={definition} scale={ASSEMBLY_SCALE} driftAmount={0.05} driftSpeed={0.3}>
         {/* Both objects are built at scale 1 so the sampled clouds, the meshes
             and the particles share one coordinate space. */}
         <Tablet ref={tablet} dissolvable />
@@ -241,7 +230,6 @@ export default function Scene04TabletToSerum({
             seed={9}
           />
         ) : null}
-      </group>
-    </group>
+    </SceneAnchor>
   );
 }
