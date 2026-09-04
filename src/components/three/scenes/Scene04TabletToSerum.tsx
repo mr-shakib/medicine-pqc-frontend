@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import Tablet, { type TabletHandle } from '@/components/three/objects/Tablet';
 import SerumBottle, {
@@ -89,7 +89,7 @@ export default function Scene04TabletToSerum({
     waypoint: Float32Array;
   } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const tabletHandle = tablet.current;
     const vialHandle = vial.current;
     if (!tabletHandle || !vialHandle) return;

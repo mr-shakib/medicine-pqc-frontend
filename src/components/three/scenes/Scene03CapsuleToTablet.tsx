@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
 import Tablet, { type TabletHandle } from '@/components/three/objects/Tablet';
@@ -90,15 +90,16 @@ export default function Scene03CapsuleToTablet({
    * Both clouds, sampled once from the two handles.
    *
    * Held in state rather than a memo because the handles are refs and are only
-   * populated after the children have mounted; the effect below runs on the
-   * commit that first makes them available.
+   * populated after the children have mounted. A LAYOUT effect, so the cloud is
+   * built and the particles mounted synchronously before the first frame --
+   * which is when the whole world is compiled (see `Precompile`).
    */
   const [clouds, setClouds] = useState<{
     source: SurfaceSample;
     target: SurfaceSample;
   } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const capsuleHandle = capsule.current;
     const tabletHandle = tablet.current;
     if (!capsuleHandle || !tabletHandle) return;

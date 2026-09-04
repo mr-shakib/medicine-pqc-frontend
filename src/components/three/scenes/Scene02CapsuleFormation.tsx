@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, type PointLight } from 'three';
+import { Group, type Mesh, type MeshBasicMaterial } from 'three';
 import Capsule, { type CapsuleHandle } from '@/components/three/objects/Capsule';
 import Motes from '@/components/three/objects/Motes';
 import SceneAnchor from '@/components/three/SceneAnchor';
@@ -10,6 +10,7 @@ import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
 import { hologram } from '@/lib/design/materials';
+import { lightRig } from '@/lib/lightRig';
 import { damp, lerp, range, smoothstep } from '@/lib/math';
 import type { SceneComponentProps } from '@/types';
 
@@ -44,6 +45,9 @@ const T = {
   explains it. Local 0.4 -> 0.92 puts the visible work under this chapter's own
   line, and leaves the tail for the finished capsule to hold and turn.
 */
+
+/** Peak intensity of the seam flash, added to the chapter's pool light. */
+const SEAM_FLASH = 26;
 
 /**
  * Where each half waits before it is drawn in. Off-axis on all three axes, so
@@ -90,7 +94,8 @@ export default function Scene02CapsuleFormation({
   const capsule = useRef<CapsuleHandle>(null);
   const guides = useRef<Group>(null);
   const guideRings = useRef<(Group | null)[]>([]);
-  const seam = useRef<PointLight>(null);
+  /** The guides' materials, collected once rather than traversed per frame. */
+  const guideMaterials = useRef<MeshBasicMaterial[] | null>(null);
   /**
    * Its own node, inside the anchor: this chapter rotates and lifts the
    * whole assembly, which must never touch the anchored transform.
@@ -185,13 +190,21 @@ export default function Scene02CapsuleFormation({
     if (guides.current) {
       const shown = smoothstep(T.convergeFrom, T.alignFrom, t) * (1 - close);
       guides.current.visible = shown > 0.01;
-      guides.current.traverse((child) => {
-        const mesh = child as import('three').Mesh;
-        const material = mesh.material as { opacity?: number } | undefined;
-        if (material && typeof material.opacity === 'number') {
-          material.opacity = shown * 0.3;
-        }
-      });
+      if (!guideMaterials.current) {
+        const found: MeshBasicMaterial[] = [];
+        guides.current.traverse((child) => {
+          const material = (child as Mesh).material as
+            | MeshBasicMaterial
+            | undefined;
+          if (material && typeof material.opacity === 'number') {
+            found.push(material);
+          }
+        });
+        guideMaterials.current = found;
+      }
+      for (const material of guideMaterials.current) {
+        material.opacity = shown * 0.3;
+      }
       guides.current.rotation.y = time * 0.18;
 
       // The rings close on the seam as the halves align: a caliper reading,
@@ -202,14 +215,18 @@ export default function Scene02CapsuleFormation({
     }
 
     /* --- Seal: a brief specular reaction at the join ---------------------- */
-    if (seam.current) {
+    {
       // A narrow Gaussian centred on the moment of closure. Damped so a fast
       // scrub cannot skip past the peak without the light registering at all.
+      //
+      // The light itself belongs to the shared pool, not to this chapter:
+      // toggling a light of our own would change the scene's light count and
+      // recompile every shader on screen at the seal. See `lib/lightRig`.
       const x = (t - T.closeTo) / 0.045;
       const flash = Math.exp(-x * x);
       settle.current = damp(settle.current, flash, 0.002, dt);
-      seam.current.intensity = settle.current * 26;
-      seam.current.visible = settle.current > 0.005;
+      lightRig.boost[definition.index] =
+        settle.current > 0.005 ? settle.current * SEAM_FLASH : 0;
     }
 
     /* --- Completed capsule: a slow, steady turn --------------------------- */
@@ -257,17 +274,6 @@ export default function Scene02CapsuleFormation({
           </group>
         ))}
       </group>
-
-      {/* Light reaction at the seam. */}
-      <pointLight
-        ref={seam}
-        position={[0, 0, 0]}
-        color={accent.pharma.glow}
-        intensity={0}
-        distance={9}
-        decay={2}
-        visible={false}
-      />
 
       {/* Formation motes, drawn inward as the shell assembles. */}
       <Motes

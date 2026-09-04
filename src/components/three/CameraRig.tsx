@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { scrollStore } from '@/lib/scrollStore';
 import {
-  getCameraKeys,
+  getCameraPath,
   responsiveFov,
   sampleCameraPath,
 } from '@/lib/cameraPath';
@@ -14,7 +14,6 @@ import { damp, frameDelta } from '@/lib/math';
 /** Module-level scratch vectors -- the frame loop must never allocate. */
 const desiredPosition = new Vector3();
 const desiredTarget = new Vector3();
-const smoothedTarget = new Vector3();
 const aimPoint = new Vector3();
 const forward = new Vector3();
 const right = new Vector3();
@@ -29,65 +28,69 @@ const WORLD_UP = new Vector3(0, 1, 0);
 const DESKTOP_X_FRAMING = 0.34; // subject sits right of the copy column
 const MOBILE_Y_FRAMING = 0.3; // subject sits above the bottom-anchored copy
 
+/** Pointer parallax amplitude, in world units at full deflection. */
+const PARALLAX = 0.55;
+
 export interface CameraRigProps {
   /** Use the portrait camera offsets and a wider lens. */
   mobile: boolean;
   /** Normalised pointer position for parallax; pass a zeroed ref to disable. */
   pointer: React.RefObject<{ x: number; y: number }>;
-  /** Collapse easing to near-instant for reduced-motion users. */
+  /** Disable the parallax for reduced-motion users. */
   reducedMotion: boolean;
 }
 
 /**
- * Flies the camera along the world spline defined in `lib/cameraPath`, then
+ * Flies the camera along the world path defined in `lib/cameraPath`, then
  * applies a compositional offset so the subject never sits underneath the copy.
  *
- * Position and aim are damped independently, which is what makes the motion read
- * as a camera operator rather than a rail. All damping is frame-rate independent,
- * so a 144 Hz display and a throttled 30 fps phone trace the same curve.
+ * The camera sits EXACTLY on the path at the smoothed scroll position. There is
+ * no further damping of its position or aim: the scroll value is already
+ * smoothed to a continuous velocity, and the path itself is continuous in
+ * speed, so a second and third smoother here would only add lag -- which is
+ * what they used to do. The one thing still damped is the pointer parallax,
+ * so mouse jitter never reaches the lens.
  */
 export default function CameraRig({
   mobile,
   pointer,
   reducedMotion,
 }: CameraRigProps) {
-  const initialised = useRef(false);
+  const parallax = useRef({ x: 0, y: 0 });
 
   // `camera` and `size` are read from the per-frame state rather than `useThree`
   // so that mutating them stays inside the render loop, where it belongs.
   useFrame((state, delta) => {
     const { camera, size } = state;
-    // Guards against a backgrounded tab returning with a huge delta, without
-    // being so tight that a low frame rate turns into camera lag. See
-    // MAX_FRAME_DELTA.
     const dt = frameDelta(delta);
-    const keys = getCameraKeys(mobile);
-    sampleCameraPath(keys, scrollStore.smooth, desiredPosition, desiredTarget);
+
+    sampleCameraPath(
+      getCameraPath(mobile),
+      scrollStore.smooth,
+      desiredPosition,
+      desiredTarget,
+    );
 
     // Subtle pointer parallax, disabled on touch and on the wider mobile lens.
-    const parallax = mobile ? 0 : 0.55;
-    desiredPosition.x += pointer.current.x * parallax;
-    desiredPosition.y += -pointer.current.y * parallax * 0.6;
+    const amount = mobile || reducedMotion ? 0 : PARALLAX;
+    parallax.current.x = damp(
+      parallax.current.x,
+      pointer.current.x * amount,
+      0.001,
+      dt,
+    );
+    parallax.current.y = damp(
+      parallax.current.y,
+      -pointer.current.y * amount * 0.6,
+      0.001,
+      dt,
+    );
 
-    const posSmoothing = reducedMotion ? 0.000001 : 0.0015;
-    const aimSmoothing = reducedMotion ? 0.000001 : 0.004;
-
-    if (!initialised.current) {
-      camera.position.copy(desiredPosition);
-      smoothedTarget.copy(desiredTarget);
-      initialised.current = true;
-    } else {
-      camera.position.set(
-        damp(camera.position.x, desiredPosition.x, posSmoothing, dt),
-        damp(camera.position.y, desiredPosition.y, posSmoothing, dt),
-        damp(camera.position.z, desiredPosition.z, posSmoothing, dt),
-      );
-      smoothedTarget.set(
-        damp(smoothedTarget.x, desiredTarget.x, aimSmoothing, dt),
-        damp(smoothedTarget.y, desiredTarget.y, aimSmoothing, dt),
-        damp(smoothedTarget.z, desiredTarget.z, aimSmoothing, dt),
-      );
-    }
+    camera.position.set(
+      desiredPosition.x + parallax.current.x,
+      desiredPosition.y + parallax.current.y,
+      desiredPosition.z,
+    );
 
     const aspect = size.width / size.height;
     const fov = responsiveFov(aspect);
@@ -101,7 +104,7 @@ export default function CameraRig({
     // Aiming to one side of the subject pushes the subject to the other side of
     // the frame. The offset is derived from the view frustum at the subject's
     // distance, so the composition holds at any viewport size or focal length.
-    forward.copy(smoothedTarget).sub(camera.position);
+    forward.copy(desiredTarget).sub(camera.position);
     const distance = forward.length();
     forward.divideScalar(distance || 1);
 
@@ -111,7 +114,7 @@ export default function CameraRig({
     const halfHeight = distance * Math.tan((fov * Math.PI) / 360);
     const halfWidth = halfHeight * aspect;
 
-    aimPoint.copy(smoothedTarget);
+    aimPoint.copy(desiredTarget);
     if (mobile) {
       aimPoint.addScaledVector(trueUp, -halfHeight * MOBILE_Y_FRAMING);
     } else {

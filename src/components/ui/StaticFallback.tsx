@@ -28,7 +28,6 @@ export default function StaticFallback() {
             height: '38vmin',
             right: `${6 + (i % 3) * 14}%`,
             top: `${10 + (i % 4) * 19}%`,
-            filter: 'blur(60px)',
           }}
         />
       ))}

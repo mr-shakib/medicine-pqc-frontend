@@ -31,6 +31,12 @@ export interface CryptoLatticeProps extends LatticeOptions {
   getGrow: () => number;
   /** Presence of the outer boundary and field, 0 -> 1. Read every frame. */
   getField: () => number;
+  /**
+   * Read every frame; false skips the update entirely. The node loop is the
+   * one piece of per-frame CPU work in the piece that scales with content, so
+   * a chapter that is not being drawn should not pay for it.
+   */
+  getActive?: () => boolean;
   /** Radius of the faceted boundary. */
   boundaryRadius?: number;
   /** Geometry subdivision for the boundary shell. */
@@ -57,6 +63,7 @@ export default function CryptoLattice({
   highlightRatio,
   getGrow,
   getField,
+  getActive,
   boundaryRadius = 3,
   detail = 1,
 }: CryptoLatticeProps) {
@@ -167,6 +174,8 @@ export default function CryptoLattice({
   /* ---------------------------------------------------------------------- */
 
   useFrame((state, delta) => {
+    if (getActive && !getActive()) return;
+
     const dt = Math.min(delta, 1 / 20);
     const time = state.clock.elapsedTime;
     const grow = clamp(getGrow());

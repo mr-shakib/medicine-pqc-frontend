@@ -31,13 +31,21 @@ export const BUDGETS: Record<QualityTier, QualityBudget> = {
   },
   medium: {
     tier: 'medium',
-    dpr: [1, 1.5],
-    particles: 4000,
+    /*
+      Native resolution, with anti-aliasing.
+
+      This tier is phones and four-core laptops, and the piece is bound by
+      fragment work. Resolution above 1 costs more than it shows on dark,
+      soft surfaces; anti-aliasing costs less than it shows on the hairline
+      rings and wireframes, so the budget goes there instead.
+    */
+    dpr: [1, 1],
+    particles: 3000,
     detail: 1,
     postProcessing: true,
     transmission: false,
     shadows: false,
-    samples: 0,
+    samples: 4,
   },
   high: {
     tier: 'high',
@@ -55,7 +63,7 @@ export const BUDGETS: Record<QualityTier, QualityBudget> = {
       visibly pop every time it changes.
     */
     dpr: [1, 1.25],
-    particles: 6000,
+    particles: 5000,
     detail: 2,
     postProcessing: true,
     /*
@@ -82,8 +90,13 @@ export const BUDGETS: Record<QualityTier, QualityBudget> = {
 };
 
 /**
- * Best-effort device tiering, run once on the client. Deliberately conservative:
- * drei's PerformanceMonitor adjusts DPR live, so a wrong guess self-corrects.
+ * Best-effort device tiering, run once on the client. Deliberately conservative.
+ *
+ * The tier is fixed for the session. Changing it live would rebuild every
+ * material and recompile every shader mid-scroll -- the very stall it would be
+ * trying to cure. A device that still cannot keep up has its render resolution
+ * stepped down once instead (see `ThreeExperience`), which is a buffer resize
+ * and nothing more.
  */
 export function detectQualityTier(): QualityTier {
   if (typeof window === 'undefined') return 'medium';

@@ -1,93 +1,68 @@
 'use client';
 
-import { useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useIsomorphicLayoutEffect } from '@/hooks/useIsomorphicLayoutEffect';
 import { scrollStore, resetScrollStore } from '@/lib/scrollStore';
-import { sceneAccent, sceneAt, progressToSection } from '@/lib/scenes';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 /**
- * The single source of scroll truth for the entire page.
+ * Measures the scroll spine into the store, and keeps the measurement current.
  *
- * One ScrollTrigger spans the whole document and writes into the non-reactive
- * `scrollStore`. Nothing here calls setState, so scrolling costs zero React
- * work. The only DOM write is a CSS custom property for the active accent.
+ * That is all it does. The scroll POSITION is not read here -- it is read once
+ * per frame, inside the render loop, by `ScrollSampler` -- so there is no
+ * scroll-event plumbing, no library ticker to fall out of step with the frame,
+ * and native scrolling is left entirely to the browser. On touch devices in
+ * particular, anything that intercepts the gesture to drive scroll itself
+ * changes the feel of the inertia; this leaves it alone.
  *
  * Renders nothing.
  */
 export default function ScrollController() {
-  const lastProgress = useRef(0);
-  const lastTime = useRef(0);
-
   useIsomorphicLayoutEffect(() => {
     resetScrollStore();
 
-    // The mobile URL bar collapsing must not thrash layout or re-fire triggers.
-    ScrollTrigger.config({ ignoreMobileResize: true });
-
-    // Defuses iOS Safari rubber-banding and address-bar scroll jitter.
-    if (window.matchMedia('(pointer: coarse)').matches) {
-      ScrollTrigger.normalizeScroll(true);
-    }
-
     // Anchor to the scroll spine, NOT the document: anything after it (the
-    // footer) must not compress the progress range, or every scene would drift
-    // out of alignment with its camera keyframe.
+    // closing section, the footer) must not compress the progress range, or
+    // every scene would drift out of alignment with its camera keyframe.
     const spine = document.querySelector<HTMLElement>('[data-scroll-spine]');
     if (!spine) return;
 
-    const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: spine,
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: true,
-        onUpdate: (self) => {
-          const progress = self.progress;
-          const now = performance.now();
-          const dt = Math.max((now - lastTime.current) / 1000, 1 / 240);
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    let width = window.innerWidth;
 
-          scrollStore.velocity = (progress - lastProgress.current) / dt;
-          scrollStore.progress = progress;
-
-          lastProgress.current = progress;
-          lastTime.current = now;
-
-          const scene = sceneAt(progress);
-          if (scene !== scrollStore.scene) {
-            scrollStore.scene = scene;
-            document.documentElement.style.setProperty(
-              '--scene-accent',
-              sceneAccent(scene),
-            );
-          }
-          scrollStore.sceneProgress = progressToSection(progress) - scene + 0.5;
-        },
-      });
-    });
-
-    const onResize = () => ScrollTrigger.refresh();
-    let resizeTimer = 0;
-    const debouncedResize = () => {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(onResize, 150);
+    const measure = () => {
+      const rect = spine.getBoundingClientRect();
+      scrollStore.spineTop = rect.top + window.scrollY;
+      scrollStore.spineSpan = Math.max(spine.offsetHeight - window.innerHeight, 1);
     };
-    window.addEventListener('resize', debouncedResize);
 
-    // Content below the fold mounts after hydration; recompute once settled.
-    const refreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 200);
+    measure();
+
+    // Real layout changes -- orientation, a font swap, a late mount below.
+    const observer = new ResizeObserver(measure);
+    observer.observe(spine);
+
+    let timer = 0;
+    const onResize = () => {
+      /*
+        On touch devices the address bar collapsing fires `resize` with no
+        change in width. The spine is sized in `vh`, which does not move with
+        the bar, so re-measuring would only shift the mapping by the bar's
+        height every time it toggles.
+      */
+      if (coarse && window.innerWidth === width) return;
+      width = window.innerWidth;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(measure, 120);
+    };
+    window.addEventListener('resize', onResize);
+
+    // Content below the fold settles after hydration; measure once more then.
+    const settle = window.setTimeout(measure, 300);
 
     return () => {
-      window.clearTimeout(resizeTimer);
-      window.clearTimeout(refreshTimer);
-      window.removeEventListener('resize', debouncedResize);
-      ScrollTrigger.normalizeScroll(false);
-      ctx.revert();
+      window.clearTimeout(timer);
+      window.clearTimeout(settle);
+      window.removeEventListener('resize', onResize);
+      observer.disconnect();
     };
   }, []);
 

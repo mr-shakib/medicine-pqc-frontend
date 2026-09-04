@@ -18,9 +18,9 @@ import type { SceneComponentProps } from '@/types';
  * then shell, then the suspended motes, then its structural cage, and finally
  * the holographic instrumentation that measures it.
  *
- * This chapter is two viewport heights long (`scrollWeight: 2` in `lib/scenes`)
- * and the camera reaches its mark 62% of the way through, so the approach has
- * genuine room and never feels hurried.
+ * The chapter is a book-end (see the weights in `lib/scenes`) and the camera
+ * reaches its mark 40% of the way through, so the approach has room without
+ * holding the viewer at the door.
  *
  * Every property below is a pure function of scroll position -- there is no
  * playback state anywhere -- so scrolling backwards reverses the entire

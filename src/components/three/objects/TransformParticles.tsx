@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import {
   AdditiveBlending,
   BufferAttribute,
@@ -84,7 +84,6 @@ export default function TransformParticles({
   seed = 1,
 }: TransformParticlesProps) {
   const points = useRef<Points>(null);
-  const pixelRatio = useThree((state) => state.viewport.dpr);
 
   const count = Math.min(
     source.positions.length,
@@ -158,7 +157,7 @@ export default function TransformParticles({
         uniforms: {
           uProgress: { value: 0 },
           uSize: { value: size },
-          uPixelRatio: { value: pixelRatio },
+          uPixelRatio: { value: 1 },
           uOpacity: { value: 0 },
           uCipherAmount: { value: 0 },
           uSpread: { value: spread },
@@ -170,7 +169,7 @@ export default function TransformParticles({
           uFogDensity: { value: fog.density },
         },
       }),
-    [size, pixelRatio, spread, swirlStrength, drift, color, cipherColor],
+    [size, spread, swirlStrength, drift, color, cipherColor],
   );
 
   useEffect(
@@ -198,6 +197,7 @@ export default function TransformParticles({
     uniforms.uOpacity.value = opacity;
     uniforms.uCipherAmount.value = clamp(getCipher());
     uniforms.uTime.value = state.clock.elapsedTime;
+    uniforms.uPixelRatio.value = state.viewport.dpr;
   });
 
   return (

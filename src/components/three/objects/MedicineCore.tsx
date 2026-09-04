@@ -75,6 +75,8 @@ export default function MedicineCore({
   const cage = useRef<Group>(null);
   const instruments = useRef<Group>(null);
   const ticks = useRef<InstancedMesh>(null);
+  /** The instrument materials, collected once rather than traversed per frame. */
+  const instrumentMaterials = useRef<MeshBasicMaterial[] | null>(null);
 
   const detail = budget.detail;
 
@@ -247,12 +249,19 @@ export default function MedicineCore({
     }
 
     if (instruments.current) {
-      instruments.current.traverse((child) => {
-        const mesh = child as Mesh;
-        if (!mesh.material) return;
-        const material = mesh.material as MeshBasicMaterial;
-        if (material.transparent) material.opacity = revealInstruments * 0.28;
-      });
+      if (!instrumentMaterials.current) {
+        const found: MeshBasicMaterial[] = [];
+        instruments.current.traverse((child) => {
+          const material = (child as Mesh).material as
+            | MeshBasicMaterial
+            | undefined;
+          if (material?.transparent) found.push(material);
+        });
+        instrumentMaterials.current = found;
+      }
+      for (const material of instrumentMaterials.current) {
+        material.opacity = revealInstruments * 0.28;
+      }
       if (ticks.current) {
         (ticks.current.material as MeshBasicMaterial).opacity =
           revealInstruments * 0.4;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import {
   AdditiveBlending,
   BufferAttribute,
@@ -60,7 +60,6 @@ export default function Motes({
   seed = 1,
 }: MotesProps) {
   const points = useRef<Points>(null);
-  const pixelRatio = useThree((state) => state.viewport.dpr);
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -104,14 +103,14 @@ export default function Motes({
           uColor: { value: new Color(color) },
           uTime: { value: 0 },
           uSize: { value: size },
-          uPixelRatio: { value: pixelRatio },
+          uPixelRatio: { value: 1 },
           uReveal: { value: getReveal ? 0 : 1 },
           uDrift: { value: drift },
           uConverge: { value: 0 },
           uFogDensity: { value: fog.density },
         },
       }),
-    [color, size, pixelRatio, drift, getReveal],
+    [color, size, drift, getReveal],
   );
 
   useEffect(
@@ -130,6 +129,8 @@ export default function Motes({
     // mutated every frame, which belongs to the scene graph, not render output.
     const uniforms = (points.current.material as ShaderMaterial).uniforms;
     uniforms.uTime.value = state.clock.elapsedTime;
+    // Read per frame so a resolution step-down does not rebuild the material.
+    uniforms.uPixelRatio.value = state.viewport.dpr;
     if (getReveal) uniforms.uReveal.value = clamp(getReveal());
     if (getConverge) uniforms.uConverge.value = clamp(getConverge());
 

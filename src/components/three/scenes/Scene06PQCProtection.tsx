@@ -39,7 +39,7 @@ const GATHER = {
 } as const;
 
 /**
- * SCENE 07 — POST-QUANTUM CRYPTOGRAPHY.
+ * SCENE 06 — POST-QUANTUM CRYPTOGRAPHY.
  *
  * The three forms gather, and a lattice crystallises around them from the
  * inside out: nodes travel into their places as the growth front reaches them,
@@ -55,7 +55,7 @@ const GATHER = {
  *
  * Four draws carry the entire architecture regardless of how many nodes it has.
  */
-export default function Scene07PQCProtection({
+export default function Scene06PQCProtection({
   definition,
 }: SceneComponentProps) {
   const capsuleSlot = useRef<Group>(null);
@@ -76,6 +76,10 @@ export default function Scene07PQCProtection({
     () => smoothstep(T.fieldFrom, T.fieldTo, progress.local()),
     [progress],
   );
+
+  // The lattice repositions every node each frame; skip that while the
+  // chapter is far enough away not to be drawn.
+  const getActive = useCallback(() => progress.nearby(1.1), [progress]);
 
   const motesReveal = useCallback(() => {
     const t = progress.local();
@@ -136,6 +140,7 @@ export default function Scene07PQCProtection({
           outerRadius={2.15}
           getGrow={getGrow}
           getField={getField}
+          getActive={getActive}
           boundaryRadius={2.55}
           detail={budget.detail}
         />
@@ -152,13 +157,7 @@ export default function Scene07PQCProtection({
           getReveal={motesReveal}
         />
 
-        <pointLight
-          position={[1.6, 1.4, 3]}
-          color={accent.lattice.light}
-          intensity={8}
-          distance={12}
-          decay={2}
-        />
+        {/* Accent light: declared in `lib/scenes`, served by `lib/lightRig`. */}
     </SceneAnchor>
   );
 }

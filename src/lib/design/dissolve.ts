@@ -79,11 +79,19 @@ export function attachDissolve(
       )
       // Earliest point in main(), so the discard costs nothing beyond the
       // noise evaluation -- lighting is never computed for a killed fragment.
+      //
+      // The noise itself sits behind the uniform branch. Two octaves of 3D
+      // simplex per fragment is real work, and an intact object -- which is
+      // what these materials are for most of every chapter -- would otherwise
+      // pay it on every pixel for a result it never uses.
       .replace(
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
-        float dissolveNoise = msp_fbm01(vDissolveLocal * uNoiseScale);
-        if (uDissolve > 0.0 && dissolveNoise < uDissolve) discard;`,
+        float dissolveNoise = 0.0;
+        if (uDissolve > 0.0) {
+          dissolveNoise = msp_fbm01(vDissolveLocal * uNoiseScale);
+          if (dissolveNoise < uDissolve) discard;
+        }`,
       )
       // The edge is emissive rather than albedo so it survives tone mapping and
       // reads as the material giving up energy as it goes.

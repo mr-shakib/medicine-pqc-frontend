@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { accent } from '@/lib/design/tokens';
 import { sceneWeight, type SceneDefinition } from '@/lib/scenes';
 
@@ -8,6 +9,12 @@ export interface SceneSectionProps {
   /** The first section carries the page's h1 and a scroll cue. */
   isFirst: boolean;
   isLast: boolean;
+  /**
+   * Extra content for a chapter whose subject exists only in the canvas.
+   * Chapter 08 introduces ten people no assistive technology can read off a
+   * texture, so it passes the roster through here.
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -25,6 +32,7 @@ export default function SceneSection({
   definition,
   isFirst,
   isLast,
+  children,
 }: SceneSectionProps) {
   const Heading = isFirst ? 'h1' : 'h2';
   const accentColor = accent[definition.accent].light;
@@ -89,6 +97,8 @@ export default function SceneSection({
           {definition.body ? (
             <p className="body-copy mt-5 max-w-[30rem]">{definition.body}</p>
           ) : null}
+
+          {children}
 
           {isFirst ? (
             <p className="eyebrow enter enter-delay-3 mt-14 text-n09">

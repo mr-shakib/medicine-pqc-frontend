@@ -12,7 +12,6 @@ import AnalysisField, {
 } from '@/components/three/objects/AnalysisField';
 import SceneAnchor from '@/components/three/SceneAnchor';
 import { useSceneProgress } from '@/hooks/useSceneProgress';
-import { accent } from '@/lib/design/tokens';
 import { lerp, range, smoothstep } from '@/lib/math';
 import type { SceneComponentProps } from '@/types';
 
@@ -59,7 +58,7 @@ const ITEMS: AnalysisItem[] = [
 ];
 
 /**
- * SCENE 06 — AI DETECTION.
+ * SCENE 05 — AI DETECTION.
  *
  * The three forms the piece has established sit among a population of visually
  * identical products. A sweep rises through the field, and as it passes each
@@ -73,7 +72,7 @@ const ITEMS: AnalysisItem[] = [
  * Nothing is marked before it is scanned. Colouring the counterfeits up front
  * would answer the question the scan exists to ask.
  */
-export default function Scene06AIDetection({
+export default function Scene05AIDetection({
   definition,
 }: SceneComponentProps) {
   const capsule = useRef<CapsuleHandle>(null);
@@ -132,15 +131,8 @@ export default function Scene06AIDetection({
           extent={EXTENT}
         />
 
-        {/* One cool source, so the analysis reads as a different kind of light
-            from the warm product rig that precedes it. */}
-        <pointLight
-          position={[-1.4, 0.6, 3.2]}
-          color={accent.analysis.light}
-          intensity={9}
-          distance={12}
-          decay={2}
-        />
+        {/* The chapter's cool accent light is declared on its definition in
+            `lib/scenes` and served by the shared pool -- see `lib/lightRig`. */}
     </SceneAnchor>
   );
 }

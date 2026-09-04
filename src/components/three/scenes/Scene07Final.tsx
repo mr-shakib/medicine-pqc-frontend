@@ -41,7 +41,7 @@ const ASSEMBLY_SCALE = 1.7;
 /**
  * The resting composition.
  *
- * Wider and flatter than the gathering pose in chapter 07 — the products are no
+ * Wider and flatter than the gathering pose in chapter 06 — the products are no
  * longer being collected, they are simply held — with the vial centred and back
  * because it is the tallest, and the other two set forward at either side.
  */
@@ -52,7 +52,7 @@ const PLACES = [
 ];
 
 /**
- * SCENE 08 — THE FINAL PROTECTION.
+ * SCENE 07 — THE FINAL PROTECTION.
  *
  * The resolution. All three forms held inside a completed lattice, each
  * carrying a still verification mark, the field stable, the whole assembly
@@ -64,11 +64,11 @@ const PLACES = [
  * because nothing needs to. A climax built from more movement than the
  * transformations that preceded it would read as unresolved.
  *
- * The verification rings are still. In chapter 06 a counterfeit ring pulsed and
+ * The verification rings are still. In chapter 05 a counterfeit ring pulsed and
  * an authentic one held steady; that grammar is kept, so stillness here means
  * exactly what it meant there.
  */
-export default function Scene08Final({ definition }: SceneComponentProps) {
+export default function Scene07Final({ definition }: SceneComponentProps) {
   const slots = useRef<(Group | null)[]>([]);
   const rings = useRef<InstancedMesh>(null);
   const capsule = useRef<CapsuleHandle>(null);
@@ -86,6 +86,7 @@ export default function Scene08Final({ definition }: SceneComponentProps) {
     () => smoothstep(T.settleFrom, T.settleTo, progress.local()) * 0.7,
     [progress],
   );
+  const getActive = useCallback(() => progress.nearby(1.1), [progress]);
 
   const ringGeometry = useMemo(() => new TorusGeometry(1, 0.008, 5, 72), []);
   const ringMaterial = useMemo(
@@ -190,6 +191,7 @@ export default function Scene08Final({ definition }: SceneComponentProps) {
           outerRadius={2.15}
           getGrow={getGrow}
           getField={getField}
+          getActive={getActive}
           boundaryRadius={2.55}
           detail={budget.detail}
         />
@@ -213,13 +215,7 @@ export default function Scene08Final({ definition }: SceneComponentProps) {
           getReveal={motesReveal}
         />
 
-        <pointLight
-          position={[-1.5, 1.4, 3]}
-          color={accent.verified.light}
-          intensity={7}
-          distance={11}
-          decay={2}
-        />
+        {/* Accent light: declared in `lib/scenes`, served by `lib/lightRig`. */}
     </SceneAnchor>
   );
 }

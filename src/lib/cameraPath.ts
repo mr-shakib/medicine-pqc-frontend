@@ -1,6 +1,6 @@
-import { Vector3 } from 'three';
+import { CatmullRomCurve3, Vector3 } from 'three';
 import { SCENES, sceneProgressAt, sceneWeight, SCROLL_SPAN } from '@/lib/scenes';
-import { clamp, smoothstep } from '@/lib/math';
+import { clamp } from '@/lib/math';
 
 /**
  * The camera travels one continuous path through the world, defined as a list
@@ -71,59 +71,79 @@ function buildKeys(mobile: boolean): CameraKey[] {
     }
   }
 
-  return keys.sort((a, b) => a.at - b.at);
+  keys.sort((a, b) => a.at - b.at);
+
+  // The progress -> arc map below needs strictly increasing keys. Two keys
+  // can only coincide through clamping at the end of the scroll; nudge the
+  // later one so it still has a (vanishing) segment of its own.
+  for (let i = 1; i < keys.length; i++) {
+    if (keys[i].at <= keys[i - 1].at) keys[i].at = keys[i - 1].at + 1e-4;
+  }
+
+  return keys;
 }
 
-export const desktopKeys = buildKeys(false);
-export const mobileKeys = buildKeys(true);
-
-export const getCameraKeys = (mobile: boolean) =>
-  mobile ? mobileKeys : desktopKeys;
-
 /* -------------------------------------------------------------------------- */
-/* Sampling                                                                    */
+/* Progress -> distance along the path                                         */
 /* -------------------------------------------------------------------------- */
 
-/** Scratch vectors -- the frame loop must never allocate. */
-const scratch = new Vector3();
-
 /**
- * Tension for the camera POSITION curve.
+ * A monotone cubic map from scroll progress to a fraction of the path's length
+ * (Fritsch-Carlson tangents).
  *
- * A Cardinal spline's tangent at a key is `tension * (next - previous)`, so at
- * 0.5 it is a plain Catmull-Rom and at 0 it is a straight line. Low tension
- * keeps a gentle arc between marks without letting a distant next key bend the
- * path before the camera has finished with the current one.
+ * This is the whole reason the motion no longer steps. Keys are unevenly
+ * spaced in progress and the marks are unevenly spaced in the world -- a
+ * chapter's hold moves the camera a couple of units, the flight to the next
+ * chapter fifty -- so any per-segment easing has to come to rest at every key
+ * to hide the speed change, and the camera visibly stops and starts fifteen
+ * times down the page. Mapping progress to ARC LENGTH with a C1 curve makes
+ * the camera's world speed continuous everywhere: it slows through a hold and
+ * accelerates into a flight without ever halting. Monotone tangents keep it
+ * from overshooting or backing up on a short segment next to a long one.
  */
-const POSITION_TENSION = 0.22;
+interface MonotoneMap {
+  t: Float64Array;
+  v: Float64Array;
+  m: Float64Array;
+}
 
-/**
- * Tension for the AIM curve — deliberately zero.
- *
- * With any tension at all, the tangent at a chapter's last key points at the
- * NEXT chapter's subject, which drags the aim point off the current subject
- * while the camera is still supposed to be looking at it. In chapter 02 that
- * showed up as the finished capsule sliding toward the edge of frame during
- * its hold. Where the camera LOOKS should never anticipate; only where it
- * travels should.
- */
-const TARGET_TENSION = 0;
+function buildMonotone(t: number[], v: number[]): MonotoneMap {
+  const n = t.length;
+  const h = new Float64Array(n - 1);
+  const d = new Float64Array(n - 1);
+  for (let k = 0; k < n - 1; k++) {
+    h[k] = t[k + 1] - t[k];
+    d[k] = h[k] > 1e-9 ? (v[k + 1] - v[k]) / h[k] : 0;
+  }
 
-/**
- * Cardinal spline through four control points at local parameter `u`.
- *
- * Hermite form: value and tangent are specified at each end, and the tangents
- * are scaled by `tension`.
- */
-function cardinal(
-  p0: Vector3,
-  p1: Vector3,
-  p2: Vector3,
-  p3: Vector3,
-  u: number,
-  tension: number,
-  out: Vector3,
-): Vector3 {
+  const m = new Float64Array(n);
+  m[0] = d[0];
+  m[n - 1] = d[n - 2];
+  for (let k = 1; k < n - 1; k++) {
+    if (d[k - 1] * d[k] <= 0) {
+      // A flat or turning neighbour: rest here, so a hold is a genuine hold.
+      m[k] = 0;
+    } else {
+      const w1 = 2 * h[k] + h[k - 1];
+      const w2 = h[k] + 2 * h[k - 1];
+      m[k] = (w1 + w2) / (w1 / d[k - 1] + w2 / d[k]);
+    }
+  }
+
+  return { t: Float64Array.from(t), v: Float64Array.from(v), m };
+}
+
+function evalMonotone(map: MonotoneMap, p: number): number {
+  const { t, v, m } = map;
+  const last = t.length - 1;
+  if (p <= t[0]) return v[0];
+  if (p >= t[last]) return v[last];
+
+  let k = 0;
+  while (k < last - 1 && p > t[k + 1]) k++;
+
+  const h = t[k + 1] - t[k];
+  const u = (p - t[k]) / h;
   const u2 = u * u;
   const u3 = u2 * u;
 
@@ -132,67 +152,154 @@ function cardinal(
   const h01 = -2 * u3 + 3 * u2;
   const h11 = u3 - u2;
 
-  out.copy(p1).multiplyScalar(h00);
-  out.addScaledVector(p2, h01);
+  return h00 * v[k] + h10 * h * m[k] + h01 * v[k + 1] + h11 * h * m[k + 1];
+}
 
-  if (tension !== 0) {
-    scratch.copy(p2).sub(p0).multiplyScalar(tension * h10);
-    out.add(scratch);
-    scratch.copy(p3).sub(p1).multiplyScalar(tension * h11);
-    out.add(scratch);
-  }
+/* -------------------------------------------------------------------------- */
+/* The path                                                                    */
+/* -------------------------------------------------------------------------- */
 
-  return out;
+export interface CameraPath {
+  keys: CameraKey[];
+  /** The camera's route through the world, through every key in order. */
+  position: CatmullRomCurve3;
+  positionMap: MonotoneMap;
+  /** The aim's route: a polyline through the distinct subjects. */
+  targets: Vector3[];
+  /** Cumulative length along `targets`, normalised 0 -> 1. */
+  targetLengths: Float64Array;
+  targetMap: MonotoneMap;
 }
 
 /**
- * Sample the path at global progress `p`, writing into the supplied vectors.
+ * Arc-length samples per key segment.
  *
- * The local parameter is eased with a smoothstep before evaluation. That has
- * one important consequence: the camera's velocity is zero at every key, from
- * both sides. Because keys are unevenly spaced in progress, a raw parameter
- * would make world-space speed jump at each mark; easing to a standstill
- * removes that discontinuity entirely and, as a bonus, gives the camera a
- * natural settle on arrival at each chapter.
+ * The curve's own parameter runs at very different rates on a short hold
+ * segment and the long flight after it, and within a sample the arc-length
+ * lookup is linear. Too few samples and the speed steps at each key by
+ * however much the parameter rate changes across one sample; at this density
+ * the step is under a percent. The table is built once and searched by
+ * bisection, so the density costs nothing per frame.
  */
-export function sampleCameraPath(
-  keys: CameraKey[],
-  p: number,
-  outPosition: Vector3,
-  outTarget: Vector3,
-): void {
-  const last = keys.length - 1;
+const ARC_SAMPLES_PER_SEGMENT = 2000;
 
-  if (p <= keys[0].at) {
-    outPosition.copy(keys[0].position);
-    outTarget.copy(keys[0].target);
+function buildPath(mobile: boolean): CameraPath {
+  const keys = buildKeys(mobile);
+  const at = keys.map((key) => key.at);
+
+  /*
+    Position: a centripetal Catmull-Rom through every mark. Centripetal rather
+    than uniform because the marks alternate between close pairs (arrival and
+    exit, a few units apart) and long flights; the uniform variant loops and
+    overshoots on exactly that layout, the centripetal one never does.
+  */
+  const position = new CatmullRomCurve3(
+    keys.map((key) => key.position),
+    false,
+    'centripetal',
+  );
+  position.arcLengthDivisions = (keys.length - 1) * ARC_SAMPLES_PER_SEGMENT;
+  const lengths = position.getLengths();
+  const total = lengths[lengths.length - 1] || 1;
+  const positionArc = keys.map(
+    (_, i) => lengths[i * ARC_SAMPLES_PER_SEGMENT] / total,
+  );
+
+  /*
+    Aim: straight lines between the DISTINCT subjects.
+
+    Consecutive keys usually share a target -- arrival and exit both look at
+    the chapter's anchor -- and a spline through repeated points makes a small
+    loop out of each repeat, which would drag the aim off the subject during
+    its own hold. Deduplicating collapses each hold to a single point and a
+    zero-length span, and the monotone map then rests there exactly. The path
+    between subjects can be straight because the aim only moves when its
+    speed is zero at both ends: a corner taken at rest is invisible.
+  */
+  const targets: Vector3[] = [];
+  const targetIndex: number[] = [];
+  for (const key of keys) {
+    const last = targets[targets.length - 1];
+    if (!last || last.distanceToSquared(key.target) > 1e-8) {
+      targets.push(key.target.clone());
+    }
+    targetIndex.push(targets.length - 1);
+  }
+
+  const targetLengths = new Float64Array(targets.length);
+  for (let i = 1; i < targets.length; i++) {
+    targetLengths[i] =
+      targetLengths[i - 1] + targets[i].distanceTo(targets[i - 1]);
+  }
+  const targetTotal = targetLengths[targets.length - 1] || 1;
+  for (let i = 0; i < targets.length; i++) targetLengths[i] /= targetTotal;
+
+  return {
+    keys,
+    position,
+    positionMap: buildMonotone(at, positionArc),
+    targets,
+    targetLengths,
+    targetMap: buildMonotone(
+      at,
+      targetIndex.map((i) => targetLengths[i]),
+    ),
+  };
+}
+
+export const desktopPath = buildPath(false);
+export const mobilePath = buildPath(true);
+
+export const getCameraPath = (mobile: boolean): CameraPath =>
+  mobile ? mobilePath : desktopPath;
+
+/* -------------------------------------------------------------------------- */
+/* Sampling                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function samplePolyline(
+  points: Vector3[],
+  lengths: Float64Array,
+  a: number,
+  out: Vector3,
+): void {
+  const last = points.length - 1;
+  if (last <= 0 || a <= 0) {
+    out.copy(points[0]);
     return;
   }
-  if (p >= keys[last].at) {
-    outPosition.copy(keys[last].position);
-    outTarget.copy(keys[last].target);
+  if (a >= 1) {
+    out.copy(points[last]);
     return;
   }
 
   let i = 0;
-  while (i < last - 1 && p > keys[i + 1].at) i++;
+  while (i < last - 1 && a > lengths[i + 1]) i++;
 
-  const k0 = keys[Math.max(0, i - 1)];
-  const k1 = keys[i];
-  const k2 = keys[i + 1];
-  const k3 = keys[Math.min(last, i + 2)];
+  const span = lengths[i + 1] - lengths[i];
+  const u = span > 1e-9 ? (a - lengths[i]) / span : 0;
+  out.copy(points[i]).lerp(points[i + 1], u);
+}
 
-  const span = k2.at - k1.at;
-  const u = span > 1e-6 ? clamp((p - k1.at) / span) : 0;
-  const eased = smoothstep(0, 1, u);
-
-  cardinal(
-    k0.position, k1.position, k2.position, k3.position,
-    eased, POSITION_TENSION, outPosition,
+/**
+ * Sample the path at global progress `p`, writing into the supplied vectors.
+ * Allocation-free: safe to call every frame.
+ */
+export function sampleCameraPath(
+  path: CameraPath,
+  p: number,
+  outPosition: Vector3,
+  outTarget: Vector3,
+): void {
+  path.position.getPointAt(
+    clamp(evalMonotone(path.positionMap, p)),
+    outPosition,
   );
-  cardinal(
-    k0.target, k1.target, k2.target, k3.target,
-    eased, TARGET_TENSION, outTarget,
+  samplePolyline(
+    path.targets,
+    path.targetLengths,
+    clamp(evalMonotone(path.targetMap, p)),
+    outTarget,
   );
 }
 

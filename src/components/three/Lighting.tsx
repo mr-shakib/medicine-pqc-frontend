@@ -1,11 +1,12 @@
 'use client';
 
 import { useRef } from 'react';
-import { Color, type DirectionalLight } from 'three';
+import { Color, type DirectionalLight, type PointLight } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { accent, light, neutral } from '@/lib/design/tokens';
 import { scrollStore } from '@/lib/scrollStore';
 import { SCENES, SCENE_COUNT, progressToSection } from '@/lib/scenes';
+import { lightRig, type LightSlot } from '@/lib/lightRig';
 import { clamp } from '@/lib/math';
 
 /** Pre-resolved colours -- the frame loop must never allocate. */
@@ -34,13 +35,23 @@ export interface LightingProps {
  *   BOUNCE a dim upward fill standing in for light returning off the chamber
  *          floor, so undersides are never crushed to black.
  *
+ *   ACCENT two point lights, always present, pointed at the two nearest
+ *          chapters by `lib/lightRig`. Chapters do not mount lights of their
+ *          own: the light count is baked into every shader, and changing it
+ *          mid-scroll recompiles every material on screen.
+ *
  * The whole rig travels with the scroll position, so eight stations spread over
- * 360 world units stay lit by four lights instead of thirty-two.
+ * 300 world units stay lit by six lights instead of forty.
  */
 export default function Lighting({ shadows }: LightingProps) {
   const rim = useRef<DirectionalLight>(null);
+  const accentA = useRef<PointLight>(null);
+  const accentB = useRef<PointLight>(null);
 
   useFrame(() => {
+    applySlot(accentA.current, lightRig.slots[0]);
+    applySlot(accentB.current, lightRig.slots[1]);
+
     // Blend the accent between the two nearest chapters.
     const section = clamp(
       progressToSection(scrollStore.smooth),
@@ -106,6 +117,17 @@ export default function Lighting({ shadows }: LightingProps) {
         position={[0, -4, 0]}
       />
 
+      {/* ACCENT pool -- see `lib/lightRig`. Never toggled, never unmounted. */}
+      <pointLight ref={accentA} intensity={0} distance={10} decay={2} />
+      <pointLight ref={accentB} intensity={0} distance={10} decay={2} />
     </>
   );
+}
+
+function applySlot(target: PointLight | null, slot: LightSlot): void {
+  if (!target) return;
+  target.position.copy(slot.position);
+  target.color.copy(slot.color);
+  target.intensity = slot.intensity;
+  target.distance = slot.distance;
 }

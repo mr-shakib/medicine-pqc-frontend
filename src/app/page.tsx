@@ -5,6 +5,7 @@ import Footer from '@/components/ui/Footer';
 import Grade from '@/components/ui/Grade';
 import Nav from '@/components/ui/Nav';
 import SceneRail from '@/components/ui/SceneRail';
+import TeamCredits from '@/components/ui/TeamCredits';
 
 /**
  * MedSecure PQC — the whole experience is one page.
@@ -14,7 +15,8 @@ import SceneRail from '@/components/ui/SceneRail';
  *   2. Grade            — vignette and scrims, the cinematic colour grade
  *   3. ContentLayer     — the scrolling DOM spine that drives it
  *   4. ClosingSection   — the page after the story, once the canvas is behind
- *   5. Nav / SceneRail  — fixed chrome
+ *   5. TeamCredits      — the chapter 08 roster as a document
+ *   6. Nav / SceneRail  — fixed chrome
  */
 export default function Home() {
   return (
@@ -34,6 +36,7 @@ export default function Home() {
 
       <ContentLayer />
       <ClosingSection />
+      <TeamCredits />
       <Footer />
     </>
   );

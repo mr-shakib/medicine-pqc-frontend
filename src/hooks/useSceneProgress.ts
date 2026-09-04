@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { scrollStore } from '@/lib/scrollStore';
-import { sceneDistance, sceneLocalRaw } from '@/lib/scenes';
+import { sceneBand, sceneDistance, sceneLocalRaw } from '@/lib/scenes';
 import { clamp, envelope } from '@/lib/math';
 
 export interface SceneProgress {
@@ -10,6 +10,18 @@ export interface SceneProgress {
   local: () => number;
   /** Local progress, unclamped, so a scene can react to being approached. */
   localRaw: () => number;
+  /**
+   * Progress across the chapter's own scroll band, 0 -> 1: 0 the moment it is
+   * framed, 1 when the scroll leaves it. For chapters that animate while they
+   * are held rather than transforming on arrival -- see `sceneBand`.
+   */
+  band: () => number;
+  /**
+   * The same band, read from the less-smoothed scroll channel. For a chapter
+   * whose subject the scroll manipulates directly rather than flies past --
+   * see `direct` on the scroll store.
+   */
+  bandDirect: () => number;
   /** 0 -> 1 -> 0 fade envelope for entering and leaving. */
   fade: (fadeAmount?: number) => number;
   /** Signed distance from this scene, measured in sections. */
@@ -32,6 +44,16 @@ export function useSceneProgress(index: number): SceneProgress {
 
   const local = useCallback(() => clamp(localRaw()), [localRaw]);
 
+  const band = useCallback(
+    () => sceneBand(scrollStore.smooth, index),
+    [index],
+  );
+
+  const bandDirect = useCallback(
+    () => sceneBand(scrollStore.direct, index),
+    [index],
+  );
+
   const fade = useCallback(
     (fadeAmount = 0.25) => envelope(localRaw(), 0, 1, fadeAmount),
     [localRaw],
@@ -47,5 +69,5 @@ export function useSceneProgress(index: number): SceneProgress {
     [distance],
   );
 
-  return { local, localRaw, fade, distance, nearby };
+  return { local, localRaw, band, bandDirect, fade, distance, nearby };
 }

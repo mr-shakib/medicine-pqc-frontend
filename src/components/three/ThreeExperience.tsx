@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { PerformanceMonitor, Preload } from '@react-three/drei';
+import { PerformanceMonitor } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
 import SceneManager from '@/components/three/SceneManager';
 import ScrollController from '@/components/three/ScrollController';
@@ -12,9 +12,11 @@ import { usePointerParallax } from '@/hooks/usePointerParallax';
 import { scrollStore } from '@/lib/scrollStore';
 import { neutral } from '@/lib/design/tokens';
 import { responsiveFov } from '@/lib/cameraPath';
-import type { QualityTier } from '@/lib/quality';
 
-const TIER_ORDER: QualityTier[] = ['low', 'medium', 'high'];
+/** The render resolution is never stepped below this fraction of a CSS pixel. */
+const MIN_DPR = 0.75;
+/** How much one step-down takes off the resolution ceiling. */
+const DPR_STEP = 0.25;
 
 /**
  * The root of the WebGL layer.
@@ -23,25 +25,41 @@ const TIER_ORDER: QualityTier[] = ['low', 'medium', 'high'];
  * and never remounts. The DOM content layer scrolls independently on top of it.
  */
 export default function ThreeExperience() {
-  const { tier, budget, setTier } = useQualityTier();
+  const { tier, budget } = useQualityTier();
   const { isMobile, isTouch, reducedMotion } = useViewportFlags();
   const pointer = usePointerParallax(!isTouch);
   const [ready, setReady] = useState(false);
   const [contextLost, setContextLost] = useState(false);
 
-  /** Fade the canvas in only once the first frame has actually been drawn. */
-  const handleCreated = useCallback(() => {
+  /*
+    The resolution ceiling, and the only quality setting that ever changes at
+    runtime.
+
+    The old response to a slow device was to drop the whole quality tier, which
+    rebuilt every material and recompiled every shader -- a stall of a second or
+    more, in the middle of scrolling, in the name of performance. Now a slow
+    device has its resolution stepped down instead: a single buffer resize,
+    taken at most twice, and never stepped back up so the frame does not pop
+    between two sizes as the scroll starts and stops.
+  */
+  const [dprCap, setDprCap] = useState(budget.dpr[1]);
+  const dpr = Math.min(
+    Math.max(
+      typeof window === 'undefined' ? 1 : window.devicePixelRatio,
+      budget.dpr[0],
+    ),
+    dprCap,
+  );
+
+  /** Fade the canvas in only once every shader has compiled and drawn. */
+  const handleReady = useCallback(() => {
     scrollStore.ready = true;
     setReady(true);
   }, []);
 
-  /** Step the quality tier down when frames are consistently slow. */
   const handleDecline = useCallback(() => {
-    setTier((current) => {
-      const i = TIER_ORDER.indexOf(current);
-      return TIER_ORDER[Math.max(0, i - 1)];
-    });
-  }, [setTier]);
+    setDprCap((cap) => Math.max(MIN_DPR, Math.round((cap - DPR_STEP) * 100) / 100));
+  }, []);
 
   // WebGL context loss is a real failure mode on mobile Safari under memory
   // pressure; recover rather than leaving a dead black rectangle.
@@ -77,7 +95,7 @@ export default function ThreeExperience() {
         aria-hidden="true"
       >
         <Canvas
-          dpr={budget.dpr}
+          dpr={dpr}
           gl={{
             antialias: budget.samples > 0,
             alpha: false,
@@ -91,13 +109,6 @@ export default function ThreeExperience() {
             */
             toneMapping: ACESFilmicToneMapping,
             toneMappingExposure: 0.94,
-            /*
-              Transmissive materials cost a full extra render of the scene into
-              a backbuffer. Halving that buffer's resolution quarters its
-              fragment cost, and the difference is invisible: the result is only
-              ever sampled through a refracting surface that is already blurring
-              and distorting it.
-            */
             transmissionResolutionScale: 0.5,
           }}
           camera={{
@@ -109,38 +120,22 @@ export default function ThreeExperience() {
           // 'percentage' maps to PCFShadowMap; R3F's `true` selects the
           // PCFSoftShadowMap that three 0.185 deprecated.
           shadows={budget.shadows ? 'percentage' : false}
-          onCreated={handleCreated}
         >
           <color attach="background" args={[neutral.n00]} />
 
-          <PerformanceMonitor
-            onDecline={handleDecline}
-            flipflops={3}
-            factor={1}
-          >
-            <SceneManager
-              budget={budget}
-              mobile={isMobile}
-              reducedMotion={reducedMotion}
-              pointer={pointer}
-            />
-          </PerformanceMonitor>
+          <SceneManager
+            budget={budget}
+            mobile={isMobile}
+            reducedMotion={reducedMotion}
+            pointer={pointer}
+            onReady={handleReady}
+          />
 
           {/*
-            No AdaptiveDpr.
-
-            Dropping resolution while scrolling is the textbook fix for a
-            scroll-driven scene, and on this content it is unusable: the canvas
-            keeps a fixed CSS size, so every change rescales the drawing buffer
-            and the whole frame visibly pops — twice per scroll gesture, once
-            down and once back. On large, soft, dark surfaces that reads as the
-            UI flashing.
-
-            The resolution is therefore fixed, and the fragment cost it was
-            chasing is taken out permanently instead: a lower DPR ceiling and
-            fewer clearcoat lobes. Both are invisible; a resolution pop is not.
+            Only once the world is warm. The compile pass itself produces a
+            few very slow frames, and they must not be read as a slow device.
           */}
-          <Preload all />
+          {ready ? <PerformanceMonitor onDecline={handleDecline} /> : null}
         </Canvas>
       </div>
 
@@ -155,7 +150,7 @@ export default function ThreeExperience() {
 
       {process.env.NEXT_PUBLIC_DEBUG === '1' ? (
         <div className="pointer-events-none fixed bottom-3 left-3 z-50 font-mono text-[10px] text-ink-muted">
-          tier: {tier}
+          tier: {tier} · dpr: {dpr}
         </div>
       ) : null}
     </>
