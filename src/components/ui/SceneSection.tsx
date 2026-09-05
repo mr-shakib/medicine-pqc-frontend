@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { accent } from '@/lib/design/tokens';
 import { sceneWeight, type SceneDefinition } from '@/lib/scenes';
 
 export interface SceneSectionProps {
@@ -35,7 +34,13 @@ export default function SceneSection({
   children,
 }: SceneSectionProps) {
   const Heading = isFirst ? 'h1' : 'h2';
-  const accentColor = accent[definition.accent].light;
+  /*
+    The `ink` step, not `light`. `light` is a LIT FACE of an object and stays
+    pale in both palettes; a marker drawn against the ground has to flip with
+    it, which is the one thing `ink` exists for. Read as a custom property so
+    this follows a theme change without re-rendering.
+  */
+  const accentColor = `var(--color-${definition.accent}-ink)`;
   const weight = sceneWeight(definition.index);
 
   const titleLines = definition.title.split('\n');
@@ -49,7 +54,7 @@ export default function SceneSection({
       className="relative w-full"
     >
       <div className="sticky top-0 flex h-screen w-full items-end px-6 pb-28 sm:items-center sm:px-12 sm:pb-0 lg:px-20">
-        <div className="pointer-events-none max-w-[34rem]">
+        <div className="max-w-[34rem]">
           {/* Chapter marker: a hairline rule, the index, the label. */}
           <div
             className={`mb-6 flex items-center gap-3 ${isFirst ? "enter enter-delay-1" : ""}`}

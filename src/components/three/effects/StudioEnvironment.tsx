@@ -1,7 +1,7 @@
 'use client';
 
 import { Environment, Lightformer } from '@react-three/drei';
-import { light, neutral, accent } from '@/lib/design/tokens';
+import { accent, light, mark, neutral } from '@/lib/design/tokens';
 import type { QualityBudget } from '@/lib/quality';
 
 export interface StudioEnvironmentProps {
@@ -61,16 +61,25 @@ export default function StudioEnvironment({ budget }: StudioEnvironmentProps) {
       {/* Warm bounce behind the subject, giving edges a faint amber lift. */}
       <Lightformer
         form="ring"
-        intensity={0.7}
+        intensity={mark.additive ? 0.7 : 0.35}
         color={accent.pharma.light}
         position={[0, 1, -7]}
         scale={[7, 7, 1]}
       />
 
-      {/* Dark floor and surround, so reflections have somewhere to fall off to. */}
+      {/*
+        The surround reflections fall off to.
+
+        Darker than the ground in BOTH palettes, and on the light one that is
+        the whole trick: a white cyclorama shoot puts black flags either side
+        of clear glass, because an edge is only visible when there is something
+        dark for it to reflect. Take them away and the glass reads as a faint
+        smudge of the paper behind it -- which is exactly what happened when
+        this followed the ramp to `n02` and turned pale.
+      */}
       <mesh scale={40}>
         <sphereGeometry args={[1, 16, 12]} />
-        <meshBasicMaterial color={neutral.n02} side={1} />
+        <meshBasicMaterial color={mark.additive ? neutral.n02 : '#6E7885'} side={1} />
       </mesh>
     </Environment>
   );

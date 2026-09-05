@@ -1,152 +1,101 @@
 /**
  * MedSecure PQC — design tokens.
  *
- * The single source of truth for colour, type, motion and elevation. These
- * values are mirrored as CSS custom properties in `src/styles/globals.css`, so
- * the DOM layer and the WebGL layer grade identically.
+ * The single source of truth for colour, type, motion and elevation. The
+ * colour half is not constant: the piece runs in two palettes, and everything
+ * that draws -- both layers -- reads it from here.
  *
- * See DESIGN_SYSTEM.md for the reasoning behind every value here.
+ * `neutral`, `accent`, `light`, `fog` and `mark` are LIVE BINDINGS onto the
+ * active palette rather than frozen objects. An importer that reads
+ * `accent.pharma.base` at the moment it builds a material gets the current
+ * palette's value; one that copied it into a module-level constant at import
+ * time would not, which is why nothing in this project may do that. The 3D
+ * scene is rebuilt when the theme changes, so every material is constructed
+ * again against the palette that is current then.
+ *
+ * The DOM does not read these at all in the common case: `globals.css` carries
+ * the same twelve neutrals and five accents as custom properties, switched by
+ * `html[data-theme]`, so every `bg-n00` and `text-n12` in the markup means the
+ * same role in both palettes and needs no variant.
+ *
+ * See DESIGN_SYSTEM.md for the reasoning behind every value, and
+ * `lib/design/palette.ts` for the two palettes themselves.
  */
 
-/* -------------------------------------------------------------------------- */
-/* Neutrals                                                                    */
-/* -------------------------------------------------------------------------- */
+import {
+  DEFAULT_THEME,
+  PALETTES,
+  type AccentSet,
+  type AccentSteps,
+  type BackdropSettings,
+  type FogSettings,
+  type LightRig,
+  type MarkModel,
+  type NeutralRamp,
+  type Palette,
+  type Theme,
+} from '@/lib/design/palette';
+
+export type { Theme, Palette };
+export type AccentFamily = keyof AccentSet;
+export type AccentStep = keyof AccentSteps;
+
+let active: Palette = PALETTES[DEFAULT_THEME];
+
+/** The 13-step neutral ramp of the active palette. See `NeutralRamp`. */
+export let neutral: NeutralRamp = active.neutral;
+/** The five semantic accent families of the active palette. */
+export let accent: AccentSet = active.accent;
+/** The studio rig colours of the active palette. */
+export let light: LightRig = active.light;
+/** Exponential-squared fog. A compositional tool as much as a depth cue: it
+ *  dissolves chapters the camera has not reached, so a distant station never
+ *  bleeds into the frame of the one being viewed. Custom shaders must apply it
+ *  themselves -- see `uFogDensity` -- since ShaderMaterial gets no fog free. */
+export let fog: FogSettings = active.fog;
+/** The cyclorama of the active palette. See `BackdropSettings`. */
+export let backdrop: BackdropSettings = active.backdrop;
+/** How annotation is drawn against the active ground. See `MarkModel`. */
+export let mark: MarkModel = active.mark;
+/** Semantic shortcuts for the values reached for most often. */
+export let color = aliases(active.neutral);
+
+function aliases(ramp: NeutralRamp) {
+  return {
+    void: ramp.n00,
+    chamber: ramp.n02,
+    surface: ramp.n04,
+    hairline: ramp.n06,
+    textPrimary: ramp.n12,
+    textSecondary: ramp.n11,
+    textBody: ramp.n10,
+    textMuted: ramp.n09,
+  } as const;
+}
 
 /**
- * A 13-step cool-cast neutral ramp. Every step carries a slight blue bias
- * (hue ~220) rather than being a pure grey: warm light reading against a subtly
- * cool ground is what makes a dark studio feel like a space rather than a void.
+ * Point the token bindings at a palette.
  *
- * Steps 00-05 are surfaces, 06-08 are lines and borders, 09-12 are type.
+ * Called before the 3D scene is rebuilt, never during a frame: materials read
+ * these once, when they are constructed, and a palette that moved underneath a
+ * live scene would leave half of it lit by the other theme.
  */
-export const neutral = {
-  /** Deepest ground. The page base and the far end of the fog. */
-  n00: '#06070A',
-  n01: '#090B0F',
-  /** The chamber the objects float inside. */
-  n02: '#0D0F15',
-  n03: '#11141B',
-  n04: '#161A22',
-  n05: '#1C212A',
-  /** Hairlines and dividers. */
-  n06: '#242A35',
-  n07: '#2F3542',
-  n08: '#414957',
-  /** Dimmed / disabled type. */
-  n09: '#5C6474',
-  /** Body copy. 5.8:1 on n00. */
-  n10: '#8A93A3',
-  /** Secondary copy and subtitles. 10.2:1 on n00. */
-  n11: '#B9C0CC',
-  /** Primary type. Never pure white -- #FFF on near-black glares. */
-  n12: '#E9ECF1',
-} as const;
+export function setPaletteTheme(theme: Theme): void {
+  active = PALETTES[theme];
+  neutral = active.neutral;
+  accent = active.accent;
+  light = active.light;
+  backdrop = active.backdrop;
+  fog = active.fog;
+  mark = active.mark;
+  color = aliases(active.neutral);
+}
 
-/* -------------------------------------------------------------------------- */
-/* Accents                                                                     */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Four semantic accent families, plus a verification state.
- *
- * Every `base` step sits in a narrow band -- saturation 23-45%, lightness
- * 51-58% -- which is what makes five different hues read as one system. Fully
- * saturated colour is what makes an interface look like a game or a hacker
- * movie; these are pigments, not lights.
- *
- * Each family has four steps with distinct jobs:
- *   deep  -- shadowed material, deep tints, pressed states
- *   base  -- the material colour of an object; the token you reach for first
- *   light -- lit faces, hovered chrome, secondary type on accent
- *   glow  -- emissive highlights ONLY, and only over small areas
- */
-export const accent = {
-  /** Pharmaceutical objects. The single warm hue in a cool system. */
-  pharma: {
-    deep: '#6E5030',
-    base: '#BE8B4E',
-    light: '#DFB98A',
-    glow: '#F2DCBC',
-  },
-  /** AI, measurement, inspection. Calm instrument blue. */
-  analysis: {
-    deep: '#1F4C56',
-    base: '#5C9AA8',
-    light: '#96C4CE',
-    glow: '#C6E2E8',
-  },
-  /** Post-quantum cryptography, lattice structure. Muted indigo. */
-  lattice: {
-    deep: '#33356B',
-    base: '#6E70B8',
-    light: '#A3A5D8',
-    glow: '#CFD0EC',
-  },
-  /** Counterfeit and tamper. Reserved -- never decorative. */
-  alert: {
-    deep: '#6E2A28',
-    base: '#C0605A',
-    light: '#DC908B',
-    glow: '#F0C0BC',
-  },
-  /** Authenticated. Calm sage, deliberately not a signal green. */
-  verified: {
-    deep: '#2C5240',
-    base: '#6FA588',
-    light: '#A3C9B4',
-    glow: '#CFE3D8',
-  },
-} as const;
-
-export type AccentFamily = keyof typeof accent;
-export type AccentStep = keyof typeof accent.pharma;
-
-/** Resolve an accent family and step to a hex string. */
+/** Resolve an accent family and step to a hex string in the active palette. */
 export const accentColor = (
   family: AccentFamily,
   step: AccentStep = 'base',
 ): string => accent[family][step];
-
-/* -------------------------------------------------------------------------- */
-/* Light                                                                       */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Studio lighting colours.
- *
- * The rig is a product-photography setup, not a game scene: a large warm key,
- * a cool fill at a fraction of its power, and an accent rim that carries the
- * current chapter's hue. Warm key against cool fill is what gives dark product
- * imagery its sense of dimension.
- */
-export const light = {
-  /** Large soft key. Warm white, like a tungsten-balanced softbox. */
-  key: '#FFF4E8',
-  /** Opposing fill. Cool white, roughly a quarter of the key's intensity. */
-  fill: '#DCE8F2',
-  /** Bounce off the imagined chamber floor. */
-  bounce: '#2A3340',
-  /** Ambient floor so nothing is ever crushed to pure black. */
-  ambient: '#0F131A',
-} as const;
-
-/* -------------------------------------------------------------------------- */
-/* Atmosphere                                                                  */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Exponential-squared fog. This is a compositional tool, not just a depth cue:
- * it dissolves chapters the camera has not reached yet, so a distant station
- * never bleeds into the frame of the one being viewed, and it is what lets the
- * opening core genuinely emerge FROM darkness as the camera closes on it.
- *
- * Custom shaders must apply this themselves -- see `uFogDensity` in
- * `shaders/medicineCore` -- since ShaderMaterial gets no fog for free.
- */
-export const fog = {
-  density: 0.034,
-  color: neutral.n00,
-} as const;
 
 /* -------------------------------------------------------------------------- */
 /* Typography                                                                  */
@@ -209,18 +158,3 @@ export const motion = {
   easeInOut: 'cubic-bezier(0.65, 0, 0.35, 1)',
 } as const;
 
-/* -------------------------------------------------------------------------- */
-/* Convenience aliases                                                         */
-/* -------------------------------------------------------------------------- */
-
-/** Semantic shortcuts for the values reached for most often. */
-export const color = {
-  void: neutral.n00,
-  chamber: neutral.n02,
-  surface: neutral.n04,
-  hairline: neutral.n06,
-  textPrimary: neutral.n12,
-  textSecondary: neutral.n11,
-  textBody: neutral.n10,
-  textMuted: neutral.n09,
-} as const;

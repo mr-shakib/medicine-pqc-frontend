@@ -7,10 +7,11 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  NormalBlending,
   ShaderMaterial,
   type Points,
 } from 'three';
-import { accent, fog } from '@/lib/design/tokens';
+import { accent, fog, mark } from '@/lib/design/tokens';
 import { motesFragment, motesVertex } from '@/shaders/motes';
 import { clamp, seededRandom } from '@/lib/math';
 
@@ -51,7 +52,7 @@ export default function Motes({
   count,
   innerRadius = 0.95,
   outerRadius = 2.45,
-  color = accent.pharma.light,
+  color = accent.pharma.ink,
   size = 0.3,
   drift = 1,
   spin = -0.035,
@@ -97,7 +98,14 @@ export default function Motes({
         vertexShader: motesVertex,
         fragmentShader: motesFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         uniforms: {
           uColor: { value: new Color(color) },

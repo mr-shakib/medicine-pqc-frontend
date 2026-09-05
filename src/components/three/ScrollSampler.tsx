@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { readScrollProgress, scrollStore } from '@/lib/scrollStore';
+import { dossierStore } from '@/lib/dossierStore';
 import { sceneAccent, sceneAt, progressToSection } from '@/lib/scenes';
 import { updateLightRig } from '@/lib/lightRig';
 import { damp, frameDelta } from '@/lib/math';
@@ -40,17 +41,40 @@ export default function ScrollSampler({
 }) {
   const mid = useRef(0);
   const primed = useRef(false);
+  /*
+    Local rather than compared against the store, so that a REBUILD forces the
+    accent to be written again. The scene index has not changed when the theme
+    swaps, but every accent hex behind it has, and a comparison against the
+    store would leave the page carrying the other palette's accent until the
+    reader happened to scroll into the next chapter.
+  */
+  const lastScene = useRef(-1);
 
   useFrame((_, delta) => {
+    /*
+      An open dossier holds the world where it is.
+
+      The panel swallows wheel and touch so the page should not move at all
+      while a record is up -- but "should not" is not a guarantee. A keyboard,
+      a trackpad gesture the compositor started before the listener ran, a
+      browser restoring position: any of them would fly the camera out of the
+      chapter the open panel is describing. This makes it impossible rather
+      than unlikely. The dossier puts the scroll back where it found it on the
+      way out, so there is nothing to catch up to when this resumes.
+    */
+    if (dossierStore.target === 1) return;
+
     const dt = frameDelta(delta);
     const progress = readScrollProgress();
 
     scrollStore.velocity = dt > 0 ? (progress - scrollStore.progress) / dt : 0;
     scrollStore.progress = progress;
 
-    if (!primed.current || reducedMotion) {
-      // First frame, or no smoothing wanted: land on the position outright.
-      // A page restored mid-scroll must not fly in from the opening.
+    if (!primed.current || reducedMotion || scrollStore.resync) {
+      // First frame, a jump asking to be landed on, or no smoothing wanted:
+      // take the position outright. A page restored mid-scroll must not fly in
+      // from the opening, and neither must a link into a chapter.
+      scrollStore.resync = false;
       mid.current = progress;
       scrollStore.smooth = progress;
       scrollStore.direct = progress;
@@ -71,7 +95,8 @@ export default function ScrollSampler({
     // The DOM readout follows the raw position: the chapter rail and the
     // accent should answer the finger, not the lens.
     const scene = sceneAt(progress);
-    if (scene !== scrollStore.scene) {
+    if (scene !== lastScene.current) {
+      lastScene.current = scene;
       scrollStore.scene = scene;
       document.documentElement.style.setProperty(
         '--scene-accent',

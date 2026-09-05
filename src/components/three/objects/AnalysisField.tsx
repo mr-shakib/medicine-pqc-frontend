@@ -8,6 +8,7 @@ import {
   BufferGeometry,
   CapsuleGeometry,
   Color,
+  NormalBlending,
   DoubleSide,
   InstancedBufferAttribute,
   InstancedMesh,
@@ -18,7 +19,7 @@ import {
   ShaderMaterial,
   TorusGeometry,
 } from 'three';
-import { accent } from '@/lib/design/tokens';
+import { accent, mark } from '@/lib/design/tokens';
 import {
   featureFragment,
   featureVertex,
@@ -190,7 +191,14 @@ export default function AnalysisField({
         vertexShader: featureVertex,
         fragmentShader: featureFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         uniforms: {
           uScanY: { value: -99 },
@@ -216,7 +224,14 @@ export default function AnalysisField({
         vertexShader: signatureVertex,
         fragmentShader: signatureFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         side: DoubleSide,
         uniforms: {
@@ -236,7 +251,14 @@ export default function AnalysisField({
         vertexShader: scanPlaneVertex,
         fragmentShader: scanPlaneFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         side: DoubleSide,
         uniforms: {
@@ -419,7 +441,7 @@ export default function AnalysisField({
       const uniforms = (scanPlane.current.material as ShaderMaterial).uniforms;
       // Brightest while travelling, gone once the sweep has finished.
       const active = reveal * (1 - smoothstep(extent * 0.85, extent, scanY));
-      uniforms.uOpacity.value = active * 0.55;
+      uniforms.uOpacity.value = active * 0.55 * mark.density;
       scanPlane.current.position.y = scanY;
       scanPlane.current.visible = active > 0.004;
     }

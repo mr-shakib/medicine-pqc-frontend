@@ -1,7 +1,6 @@
 'use client';
 
 import { SCENES } from '@/lib/scenes';
-import { accent } from '@/lib/design/tokens';
 import { useActiveScene } from '@/hooks/useActiveScene';
 
 /**
@@ -15,7 +14,7 @@ export default function SceneRail() {
   return (
     <nav
       aria-label="Chapter navigation"
-      className="fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 sm:block lg:right-9"
+      className="chrome-fade fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 sm:block lg:right-9"
     >
       <ul className="flex flex-col gap-4">
         {SCENES.map((scene) => {
@@ -30,7 +29,7 @@ export default function SceneRail() {
               >
                 <span
                   className="eyebrow translate-x-1 opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
-                  style={{ color: accent[scene.accent].light }}
+                  style={{ color: `var(--color-${scene.accent}-ink)` }}
                 >
                   {scene.label}
                 </span>
@@ -39,7 +38,7 @@ export default function SceneRail() {
                   style={{
                     width: isActive ? 26 : 12,
                     backgroundColor: isActive
-                      ? accent[scene.accent].light
+                      ? `var(--color-${scene.accent}-ink)`
                       : 'var(--color-n08)',
                   }}
                 />

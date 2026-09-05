@@ -1,9 +1,11 @@
 /**
- * Backdrop shader — the premium dark chamber the objects float inside.
+ * Backdrop shader — the chamber the objects float inside.
  *
  * This is a studio cyclorama, not a skybox: a soft vertical falloff from a
- * slightly-lifted horizon down to near-black, with a broad elliptical pool of
- * light behind the subject that carries the current chapter's accent hue.
+ * slightly-lifted horizon, with a broad elliptical pool behind the subject
+ * carrying the current chapter's accent hue. The three ground colours and the
+ * way the pool is combined both come from the palette, so the same shader
+ * paints a dark chamber and a white cyclorama.
  *
  * The dither in the fragment stage is not optional. An 8-bit framebuffer only
  * has 256 levels per channel; a gradient this dark and this wide will show hard
@@ -32,6 +34,10 @@ export const backdropFragment = /* glsl */ `
   uniform vec3 uCeiling;    // colour above
   uniform vec3 uAccent;     // current chapter accent
   uniform float uAccentAmount;
+  // 0 adds the pool to the ground, 1 tints the ground with it. A pool of light
+  // is an addition in the dark; on a near-white ground addition does nothing,
+  // and the same pool has to read as a colour the paper takes on.
+  uniform float uAccentMultiply;
   uniform float uTime;
 
   varying vec3 vDirection;
@@ -65,7 +71,12 @@ export const backdropFragment = /* glsl */ `
     glow = pow(glow, 2.2);
 
     // Only ever a whisper of hue: the accent tints the space, it does not light it.
-    vec3 color = base + uAccent * glow * uAccentAmount;
+    float pooled = glow * uAccentAmount;
+    vec3 color = mix(
+      base + uAccent * pooled,
+      base * mix(vec3(1.0), uAccent, pooled),
+      uAccentMultiply
+    );
 
     // Very slow breathing so a static hero shot is never perfectly dead.
     color *= 1.0 + sin(uTime * 0.18) * 0.012;

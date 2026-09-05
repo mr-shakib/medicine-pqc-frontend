@@ -1,5 +1,6 @@
 import { Color, Vector3 } from 'three';
 import { SCENES, SCENE_COUNT, progressToSection } from '@/lib/scenes';
+import { accent } from '@/lib/design/tokens';
 import { clamp } from '@/lib/math';
 
 /**
@@ -40,10 +41,23 @@ export const lightRig = {
   boost: new Float32Array(SCENE_COUNT),
 };
 
-/** Pre-resolved colours -- the frame loop must never allocate. */
-const SCENE_LIGHT_COLORS = SCENES.map(
-  (scene) => new Color(scene.accentLight?.color ?? '#000000'),
-);
+/**
+ * Pre-resolved colours -- the frame loop must never allocate.
+ *
+ * Filled by `rebuildLightRigColors`, not at module scope: a colour resolved
+ * when this file is first imported is the colour of whichever palette happened
+ * to be active then, and would survive a theme change unchanged. `Lighting`
+ * rebuilds them, because it is rebuilt itself for each palette.
+ */
+const SCENE_LIGHT_COLORS = SCENES.map(() => new Color('#000000'));
+
+/** Re-resolve every chapter's accent light against the current palette. */
+export function rebuildLightRigColors(): void {
+  SCENES.forEach((scene, i) => {
+    const step = scene.accentLight?.step;
+    SCENE_LIGHT_COLORS[i].set(step ? accent[scene.accent][step] : '#000000');
+  });
+}
 
 function fillSlot(slot: LightSlot, index: number): void {
   const scene = SCENES[index];

@@ -4,13 +4,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BackSide, Color, ShaderMaterial, SphereGeometry, type Mesh } from 'three';
 import { backdropFragment, backdropVertex } from '@/shaders/backdrop';
-import { neutral, accent } from '@/lib/design/tokens';
+import { accent, backdrop as ground } from '@/lib/design/tokens';
 import { SCENES, SCENE_COUNT, progressToSection } from '@/lib/scenes';
 import { scrollStore } from '@/lib/scrollStore';
 import { clamp } from '@/lib/math';
 
-/** Pre-resolved accent colours -- never construct a Color in the frame loop. */
-const SCENE_ACCENTS = SCENES.map((scene) => new Color(accent[scene.accent].base));
+/** Scratch -- never construct a Color in the frame loop. */
 const targetAccent = new Color();
 const upperAccent = new Color();
 
@@ -25,6 +24,17 @@ const upperAccent = new Color();
 export default function Backdrop() {
   const mesh = useRef<Mesh>(null);
 
+  /*
+    Resolved on mount rather than at module scope. This component is rebuilt
+    for each palette, so building the table here is what makes the accents
+    follow -- a module-level array would hold the colours of whichever palette
+    was active when the file was first imported.
+  */
+  const sceneAccents = useMemo(
+    () => SCENES.map((scene) => new Color(accent[scene.accent].base)),
+    [],
+  );
+
   const geometry = useMemo(() => new SphereGeometry(1, 32, 24), []);
 
   const material = useMemo(
@@ -36,11 +46,12 @@ export default function Backdrop() {
         depthWrite: false,
         fog: false,
         uniforms: {
-          uHorizon: { value: new Color(neutral.n03) },
-          uFloor: { value: new Color(neutral.n01) },
-          uCeiling: { value: new Color(neutral.n00) },
+          uHorizon: { value: new Color(ground.horizon) },
+          uFloor: { value: new Color(ground.floor) },
+          uCeiling: { value: new Color(ground.ceiling) },
           uAccent: { value: new Color(accent.pharma.base) },
-          uAccentAmount: { value: 0.085 },
+          uAccentAmount: { value: ground.accentAmount },
+          uAccentMultiply: { value: ground.accentMultiply ? 1 : 0 },
           uTime: { value: 0 },
         },
       }),
@@ -74,8 +85,8 @@ export default function Backdrop() {
     const lower = Math.floor(section);
     const upper = Math.min(lower + 1, SCENE_COUNT - 1);
 
-    targetAccent.copy(SCENE_ACCENTS[lower]);
-    upperAccent.copy(SCENE_ACCENTS[upper]);
+    targetAccent.copy(sceneAccents[lower]);
+    upperAccent.copy(sceneAccents[upper]);
     targetAccent.lerp(upperAccent, section - lower);
 
     (uniforms.uAccent.value as Color).lerp(targetAccent, 0.04);

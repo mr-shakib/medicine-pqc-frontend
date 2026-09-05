@@ -21,6 +21,7 @@ import Scene06PQCProtection from '@/components/three/scenes/Scene06PQCProtection
 import Scene07Final from '@/components/three/scenes/Scene07Final';
 import Scene08Team from '@/components/three/scenes/Scene08Team';
 import { scrollStore } from '@/lib/scrollStore';
+import { mark } from '@/lib/design/tokens';
 import { DEFAULT_DRAW_RADIUS, SCENES, sceneDistance } from '@/lib/scenes';
 import type { QualityBudget } from '@/lib/quality';
 import type { SceneComponentProps } from '@/types';
@@ -65,6 +66,23 @@ export default function SceneManager({
   pointer,
   onReady,
 }: SceneManagerProps) {
+  /*
+    The renderer outlives the scene -- it is created once with the Canvas and
+    never rebuilt -- so the palette's exposure has to be pushed onto it from
+    here, where this component IS remounted for each theme, rather than left to
+    the `gl` prop, which only applies when the renderer is created.
+
+    On the first frame of the new tree, and then never again: it is one
+    assignment, and it belongs to the renderer rather than to anything React
+    is rendering.
+  */
+  const exposed = useRef(false);
+  useFrame(({ gl }) => {
+    if (exposed.current) return;
+    exposed.current = true;
+    gl.toneMappingExposure = mark.exposure;
+  });
+
   return (
     <>
       {/* First, so its frame callback runs before every other one. */}

@@ -159,6 +159,6 @@ export const transformFragment = /* glsl */ `
     float alpha = shape * vFade * fogAmount;
     if (alpha < 0.002) discard;
 
-    gl_FragColor = vec4(color * alpha, 1.0);
+    gl_FragColor = vec4(color * alpha, alpha);
   }
 `;

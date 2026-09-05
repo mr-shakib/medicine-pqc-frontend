@@ -1,4 +1,4 @@
-import { accent, type AccentFamily } from '@/lib/design/tokens';
+import { accent, type AccentFamily, type AccentStep } from '@/lib/design/tokens';
 import { clamp } from '@/lib/math';
 import { TEAM_COUNT } from '@/lib/team';
 
@@ -75,7 +75,16 @@ export interface SceneDefinition {
    */
   accentLight?: {
     offset: readonly [number, number, number];
-    color: string;
+    /**
+     * Which step of the chapter's own accent family to use.
+     *
+     * A step rather than a resolved colour: this array is evaluated once, when
+     * the module is first imported, and a hex frozen in at that moment would
+     * still be the first palette's after a theme change. The family is already
+     * on the chapter, so naming the step says everything and can be resolved
+     * whenever it is actually needed.
+     */
+    step: AccentStep;
     intensity: number;
     distance: number;
   };
@@ -123,6 +132,18 @@ const BOOKEND_WEIGHT = 1.5;
 */
 const REGISTRY_LEAD_IN = 1.5;
 const REGISTRY_PER_MEMBER = 0.3;
+
+/**
+ * Where inside the registry's own band the turntable turns, as fractions of it.
+ *
+ * Here rather than in the chapter because two things outside the chapter need
+ * it: `progressForRecord` below, which a deep link into one person's dossier
+ * uses to put the scroll where that record is at the front before it opens.
+ * Everything else about scroll space is already resolved in this file, and a
+ * second copy of these two numbers in the scene would be a second thing to
+ * keep in step.
+ */
+export const REGISTRY_WINDOW = { from: 0.08, to: 0.9 } as const;
 
 export const SCENES: readonly SceneDefinition[] = [
   {
@@ -181,7 +202,7 @@ export const SCENES: readonly SceneDefinition[] = [
     // `lightRig.boost`; the definition only fixes where and what colour.
     accentLight: {
       offset: [0, 0, 0],
-      color: accent.pharma.glow,
+      step: 'glow',
       intensity: 0,
       distance: 9,
     },
@@ -250,7 +271,7 @@ export const SCENES: readonly SceneDefinition[] = [
     // the warm product rig that precedes it.
     accentLight: {
       offset: [-2.7, 1.1, 6.1],
-      color: accent.analysis.light,
+      step: 'light',
       intensity: 9,
       distance: 12,
     },
@@ -276,7 +297,7 @@ export const SCENES: readonly SceneDefinition[] = [
     },
     accentLight: {
       offset: [3.2, 2.8, 6],
-      color: accent.lattice.light,
+      step: 'light',
       intensity: 8,
       distance: 12,
     },
@@ -313,7 +334,7 @@ export const SCENES: readonly SceneDefinition[] = [
     },
     accentLight: {
       offset: [-2.55, 2.4, 5.1],
-      color: accent.verified.light,
+      step: 'light',
       intensity: 7,
       distance: 11,
     },
@@ -497,6 +518,19 @@ export function sceneBand(progress: number, index: number): number {
       ? (SCROLL_SPAN - SCENE_OFFSETS[index]) / WEIGHTS[index]
       : 1;
   return clamp((progressToSection(progress) - index) / span);
+}
+
+/**
+ * Global scroll progress at which team record `i` stands at the front of the
+ * registry, for a link that opens straight into someone's dossier.
+ */
+export function progressForRecord(i: number, total: number): number {
+  const index = SCENE_COUNT - 1;
+  const span = (SCROLL_SPAN - SCENE_OFFSETS[index]) / WEIGHTS[index];
+  const step = total > 1 ? i / (total - 1) : 0;
+  const band =
+    REGISTRY_WINDOW.from + step * (REGISTRY_WINDOW.to - REGISTRY_WINDOW.from);
+  return clamp((SCENE_OFFSETS[index] + band * span * WEIGHTS[index]) / SCROLL_SPAN);
 }
 
 /** Signed distance from a chapter, in chapters. */

@@ -26,6 +26,17 @@ export interface ScrollState {
    * One stage still absorbs the notches; it just answers sooner.
    */
   direct: number;
+  /**
+   * Set to ask the sampler to LAND on the next raw position instead of easing
+   * to it.
+   *
+   * The smoothers exist so a wheel notch arrives as a swell, and they treat a
+   * programmatic jump the same way -- a link into a record halfway down the
+   * page becomes a third of a second of flight through eight chapters, and
+   * anything that reads the world before that settles sees the wrong place
+   * entirely. Cleared by the sampler on the frame it honours it.
+   */
+  resync: boolean;
   /** Signed progress delta per second; useful for velocity-driven effects. */
   velocity: number;
   /** Index of the scene the viewport is currently centred on. */
@@ -44,6 +55,7 @@ export const scrollStore: ScrollState = {
   progress: 0,
   smooth: 0,
   direct: 0,
+  resync: false,
   velocity: 0,
   scene: 0,
   sceneProgress: 0,
@@ -57,6 +69,7 @@ export function resetScrollStore(): void {
   scrollStore.progress = 0;
   scrollStore.smooth = 0;
   scrollStore.direct = 0;
+  scrollStore.resync = false;
   scrollStore.velocity = 0;
   scrollStore.scene = 0;
   scrollStore.sceneProgress = 0;

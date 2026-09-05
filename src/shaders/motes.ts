@@ -63,6 +63,7 @@ export const motesFragment = /* glsl */ `
     float f = vFogDepth * uFogDensity;
     float fogAmount = 1.0 - clamp(1.0 - exp(-f * f), 0.0, 1.0);
 
-    gl_FragColor = vec4(uColor * alpha * vScale * uReveal * 0.85 * fogAmount, 1.0);
+    float out_ = alpha * vScale * uReveal * 0.85 * fogAmount;
+    gl_FragColor = vec4(uColor * out_, out_);
   }
 `;

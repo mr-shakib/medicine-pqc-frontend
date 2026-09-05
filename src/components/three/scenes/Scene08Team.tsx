@@ -9,6 +9,7 @@ import { useSceneProgress } from '@/hooks/useSceneProgress';
 import { useQuality } from '@/components/three/QualityProvider';
 import { accent } from '@/lib/design/tokens';
 import { lerp, range, smoothstep } from '@/lib/math';
+import { REGISTRY_WINDOW } from '@/lib/scenes';
 import { TEAM, TEAM_COUNT } from '@/lib/team';
 import type { SceneComponentProps } from '@/types';
 
@@ -26,9 +27,13 @@ const T = {
   */
   riseFrom: -0.34,
   riseTo: 0.1,
-  /** Then the turntable turns, once through the roster. */
-  rosterFrom: 0.08,
-  rosterTo: 0.9,
+  /*
+    Then the turntable turns, once through the roster. Declared in `lib/scenes`
+    beside the chapter's other scroll timings, because a deep link into one
+    record's dossier has to resolve the same window to know where to scroll.
+  */
+  rosterFrom: REGISTRY_WINDOW.from,
+  rosterTo: REGISTRY_WINDOW.to,
 } as const;
 
 const RADIUS = 4.6;
@@ -136,7 +141,7 @@ export default function Scene08Team({ definition }: SceneComponentProps) {
         radius={RADIUS}
         getCursor={getCursor}
         getReveal={getReveal}
-        color={accent.pharma.light}
+        color={accent.pharma.ink}
       />
 
       {/*
@@ -147,7 +152,7 @@ export default function Scene08Team({ definition }: SceneComponentProps) {
       <LightPool
         position={[0, -1.7, 0]}
         size={9}
-        color={accent.pharma.light}
+        color={accent.pharma.ink}
         intensity={0.16}
         falloff={3}
       />
@@ -158,7 +163,7 @@ export default function Scene08Team({ definition }: SceneComponentProps) {
         )}
         innerRadius={3.4}
         outerRadius={8}
-        color={accent.pharma.light}
+        color={accent.pharma.ink}
         size={budget.tier === 'high' ? 0.22 : 0.18}
         spin={0.011}
         seed={71}

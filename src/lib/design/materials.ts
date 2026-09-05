@@ -1,5 +1,10 @@
-import { AdditiveBlending, DoubleSide, FrontSide } from 'three';
-import { accent, neutral } from '@/lib/design/tokens';
+import {
+  AdditiveBlending,
+  DoubleSide,
+  FrontSide,
+  NormalBlending,
+} from 'three';
+import { mark } from '@/lib/design/tokens';
 import type { QualityBudget } from '@/lib/quality';
 
 /**
@@ -86,9 +91,15 @@ export const steel = {
   envMapIntensity: 1.25,
 } as const;
 
-/** Darkened machined housing. Reads as the chassis behind the product. */
+/**
+ * Darkened machined housing. Reads as the chassis behind the product.
+ *
+ * Pinned to a hex rather than taken from the neutral ramp: a chassis is a dark
+ * anodised part in any light, and reading it from `n05` would turn it into a
+ * pale grey box the moment the ramp inverted.
+ */
 export const housing = {
-  color: neutral.n05,
+  color: '#1C212A',
   metalness: 0.85,
   roughness: 0.45,
   envMapIntensity: 0.7,
@@ -158,12 +169,22 @@ export function hologram(color: string, opacity = 0.22) {
   return {
     color,
     transparent: true,
-    opacity,
-    blending: AdditiveBlending,
+    opacity: opacity * mark.opacity,
+    /*
+      Additive on a dark ground, normal on a light one.
+
+      This is the single most important line in the two-palette work. An
+      overlay of projected light is literally an ADDITION to the darkness
+      behind it; add the same thing to paper and nothing happens, because white
+      plus anything is still white. On a light ground the same overlay has to
+      be laid ON the ground instead, and the colour it is given has to be deep
+      enough to be seen against it.
+    */
+    blending: mark.additive ? AdditiveBlending : NormalBlending,
     depthWrite: false,
     side: DoubleSide,
     toneMapped: false,
-  } as const;
+  };
 }
 
 /**
@@ -180,11 +201,19 @@ export function emissive(color: string, intensity = 1.4) {
   return {
     color,
     emissive: color,
-    emissiveIntensity: intensity,
+    /*
+      Scaled almost to nothing on a light ground. An emissive term pushed above
+      1 with tone mapping bypassed is what makes a mark burn against black --
+      and on white it clips every channel to the ground colour, which is to say
+      it erases the mark it was meant to emphasise. What is left is the base
+      colour, which on the light palette is a deep enough pigment to read as a
+      solid mark on its own.
+    */
+    emissiveIntensity: intensity * mark.emissive,
     roughness: 0.4,
     metalness: 0,
     toneMapped: false,
-  } as const;
+  };
 }
 
 /** Hairline wireframe used for structure, lattices and technical overlays. */
@@ -193,7 +222,7 @@ export function hairline(color: string, opacity = 0.3) {
     color,
     wireframe: true,
     transparent: true,
-    opacity,
+    opacity: opacity * mark.opacity,
     depthWrite: false,
     toneMapped: false,
   } as const;
@@ -212,9 +241,7 @@ export function hairline(color: string, opacity = 0.3) {
  */
 export const mote = {
   size: 0.028,
-  color: neutral.n10,
   opacity: 0.34,
-  /** Brighter motes catching the key light, used sparsely. */
-  highlightColor: accent.pharma.light,
+  /** Fraction of the cloud that catches the key light and reads as accent. */
   highlightRatio: 0.06,
 } as const;

@@ -258,7 +258,7 @@ export default function Scene02CapsuleFormation({
       <group ref={guides} visible={false}>
         <mesh>
           <cylinderGeometry args={[0.004, 0.004, 3.6, 6]} />
-          <meshBasicMaterial {...hologram(accent.pharma.light, 0)} />
+          <meshBasicMaterial {...hologram(accent.pharma.ink, 0)} />
         </mesh>
         {[0, 1].map((index) => (
           <group

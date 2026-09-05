@@ -57,6 +57,21 @@ export const coreShellFragment = /* glsl */ `
   uniform float uTime;
   uniform float uReveal;
   uniform float uRimPower;
+  /*
+    0 draws this as light added to the dark; 1 draws the same distribution as
+    ink laid onto paper.
+
+    The rest of the marks in the piece carry their strength in an alpha the
+    palette can simply blend differently. This one cannot: it ACCUMULATES three
+    faint terms into a colour, with the darkness of the ground standing in for
+    zero. Composited normally that reads as an opaque near-black disc, which is
+    what it was doing on the light palette. Taking the luminance of the
+    accumulation back out as a coverage value recovers exactly the same shape
+    and hands it to a single ink colour.
+  */
+  uniform float uInkMode;
+  uniform vec3 uInkColor;
+  uniform float uInkGain;
 
   varying vec3 vNormal;
   varying vec3 vViewDir;
@@ -111,8 +126,15 @@ export const coreShellFragment = /* glsl */ `
       uGlowColor * interior * 0.032 +
       uRimColor * striation * 0.45;
 
-    // Additive: alpha is carried in the colour, so the reveal is a straight
-    // multiply and darkness is genuinely zero contribution.
-    gl_FragColor = vec4(applyFog(color * uReveal), 1.0);
+    vec3 lit = applyFog(color * uReveal);
+    float coverage = clamp(dot(lit, vec3(0.2126, 0.7152, 0.0722)) * uInkGain, 0.0, 1.0);
+
+    // Premultiplied in both modes. Under additive the alpha channel is not
+    // read at all, so carrying the reveal there costs nothing and keeps the
+    // depth-sorted buffer honest.
+    gl_FragColor = vec4(
+      mix(lit, uInkColor * coverage, uInkMode),
+      mix(uReveal, coverage, uInkMode)
+    );
   }
 `;

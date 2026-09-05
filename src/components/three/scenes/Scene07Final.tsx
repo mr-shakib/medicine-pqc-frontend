@@ -199,7 +199,7 @@ export default function Scene07Final({ definition }: SceneComponentProps) {
         <LightPool
           position={[0, -1.5, 0]}
           size={4.4}
-          color={accent.verified.light}
+          color={accent.verified.ink}
           intensity={0.2}
           falloff={3}
         />
@@ -208,7 +208,7 @@ export default function Scene07Final({ definition }: SceneComponentProps) {
           count={Math.round(budget.particles * (budget.tier === 'high' ? 0.09 : 0.045))}
           innerRadius={1.5}
           outerRadius={3.6}
-          color={accent.verified.light}
+          color={accent.verified.ink}
           size={budget.tier === 'high' ? 0.24 : 0.2}
           spin={0.016}
           seed={47}

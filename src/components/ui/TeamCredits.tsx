@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { TEAM_BY_ROLE, PROJECT } from '@/lib/team';
 
 /**
@@ -13,7 +14,7 @@ import { TEAM_BY_ROLE, PROJECT } from '@/lib/team';
 export default function TeamCredits() {
   return (
     <section
-      id="team"
+      id="credits"
       aria-label="Project team"
       className="relative z-10 border-t border-n06/60 bg-n00 px-6 py-28 sm:px-12 lg:px-20"
     >
@@ -43,9 +44,24 @@ export default function TeamCredits() {
           ))}
         </dl>
 
-        <p className="body-copy mt-16 max-w-2xl border-t border-n06/60 pt-8">
-          {PROJECT.department}, {PROJECT.institution}. {PROJECT.funding}
-        </p>
+        <div className="mt-16 flex flex-col gap-8 border-t border-n06/60 pt-8 sm:flex-row sm:items-end sm:justify-between">
+          <p className="body-copy max-w-2xl">
+            {PROJECT.department}, {PROJECT.institution}. {PROJECT.funding}
+          </p>
+
+          <Link
+            href="/team"
+            className="group inline-flex shrink-0 items-center gap-4 border border-n07 px-6 py-4 text-sm text-n12 transition-colors duration-300 hover:border-[var(--scene-accent)]"
+          >
+            The team page
+            <span
+              aria-hidden="true"
+              className="text-n09 transition-transform duration-300 group-hover:translate-x-1"
+            >
+              →
+            </span>
+          </Link>
+        </div>
       </div>
     </section>
   );

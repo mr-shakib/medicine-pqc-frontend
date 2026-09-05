@@ -7,12 +7,13 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  NormalBlending,
   ShaderMaterial,
   Sphere,
   Vector3,
   type Points,
 } from 'three';
-import { accent, fog } from '@/lib/design/tokens';
+import { accent, fog, mark } from '@/lib/design/tokens';
 import { transformFragment, transformVertex } from '@/shaders/transform';
 import { clamp, seededRandom } from '@/lib/math';
 import type { SurfaceSample } from '@/lib/geometry/surfaceSampler';
@@ -152,7 +153,14 @@ export default function TransformParticles({
         vertexShader: transformVertex,
         fragmentShader: transformFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         uniforms: {
           uProgress: { value: 0 },
@@ -194,7 +202,7 @@ export default function TransformParticles({
     if (!node.visible) return;
 
     uniforms.uProgress.value = clamp(getProgress());
-    uniforms.uOpacity.value = opacity;
+    uniforms.uOpacity.value = opacity * mark.density;
     uniforms.uCipherAmount.value = clamp(getCipher());
     uniforms.uTime.value = state.clock.elapsedTime;
     uniforms.uPixelRatio.value = state.viewport.dpr;

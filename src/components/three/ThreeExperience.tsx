@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
 import { ACESFilmicToneMapping } from 'three';
@@ -10,7 +10,8 @@ import { useQualityTier } from '@/hooks/useQualityTier';
 import { useViewportFlags } from '@/hooks/useViewportFlags';
 import { usePointerParallax } from '@/hooks/usePointerParallax';
 import { scrollStore } from '@/lib/scrollStore';
-import { neutral } from '@/lib/design/tokens';
+import { mark, neutral } from '@/lib/design/tokens';
+import { getServerTheme, getTheme, subscribeTheme } from '@/lib/theme';
 import { responsiveFov } from '@/lib/cameraPath';
 
 /** The render resolution is never stepped below this fraction of a CSS pixel. */
@@ -25,6 +26,7 @@ const DPR_STEP = 0.25;
  * and never remounts. The DOM content layer scrolls independently on top of it.
  */
 export default function ThreeExperience() {
+  const theme = useSyncExternalStore(subscribeTheme, getTheme, getServerTheme);
   const { tier, budget } = useQualityTier();
   const { isMobile, isTouch, reducedMotion } = useViewportFlags();
   const pointer = usePointerParallax(!isTouch);
@@ -89,9 +91,24 @@ export default function ThreeExperience() {
         className="fixed inset-0 z-0 transition-opacity duration-1000"
         style={{
           opacity: ready ? 1 : 0,
-          // Scrolling must never be captured by the 3D layer.
-          pointerEvents: 'none',
+          /*
+            The 3D layer takes the pointer so chapter 08's records can be
+            clicked, and the DOM spine above it is transparent to the pointer
+            so they can be reached.
+
+            Scrolling is unaffected: R3F sets no `touch-action` of its own, and
+            a fixed element receiving pointer events does not stop the document
+            scrolling under it. The one thing that would is a handler calling
+            preventDefault on wheel or touchmove, and the only one in the piece
+            is the dossier's own scroll lock, which is deliberate.
+          */
+          pointerEvents: 'auto',
         }}
+        /*
+          Still hidden from assistive technology: it is a decorative rendering
+          of copy that is already in the DOM, and the one thing in it that can
+          be clicked has a real button in `TeamRoster` standing for it.
+        */
         aria-hidden="true"
       >
         <Canvas
@@ -108,7 +125,14 @@ export default function ThreeExperience() {
               exposure keeps the chamber genuinely dark rather than lifted.
             */
             toneMapping: ACESFilmicToneMapping,
-            toneMappingExposure: 0.94,
+            /*
+              Per palette. ACES maps an input of 1.0 to roughly 0.8, so the
+              light ground rendered at the dark palette's exposure comes out a
+              flat grey instead of paper. Set here for the first frame and
+              again imperatively by `SceneManager` on every rebuild, since the
+              `gl` prop is only read when the renderer is created.
+            */
+            toneMappingExposure: mark.exposure,
             transmissionResolutionScale: 0.5,
           }}
           camera={{
@@ -123,7 +147,20 @@ export default function ThreeExperience() {
         >
           <color attach="background" args={[neutral.n00]} />
 
+          {/*
+            Rebuilt from scratch when the palette changes.
+
+            Every material in the piece reads its colours, its blending mode
+            and its emissive lift once, at construction. A theme is not a
+            uniform that can be eased across a live scene -- half of it is
+            whether a mark is ADDED to the ground or laid onto it, which is
+            baked into the compiled program -- so the honest way to change it
+            is to build the world again. It costs one `Precompile` pass, which
+            is the same pass the page already runs at load, and the scrim below
+            covers it.
+          */}
           <SceneManager
+            key={theme}
             budget={budget}
             mobile={isMobile}
             reducedMotion={reducedMotion}
@@ -138,6 +175,17 @@ export default function ThreeExperience() {
           {ready ? <PerformanceMonitor onDecline={handleDecline} /> : null}
         </Canvas>
       </div>
+
+      {/*
+        Covers the rebuild. Keyed on the theme so it simply REMOUNTS and runs
+        its own fade-out -- no state, no timer, and nothing to get stuck on if
+        a swap happens while one is already running.
+      */}
+      <div
+        key={theme}
+        aria-hidden="true"
+        className="theme-scrim pointer-events-none fixed inset-0 z-[6] bg-n00"
+      />
 
       {contextLost ? (
         <div

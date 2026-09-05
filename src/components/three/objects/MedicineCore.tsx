@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import {
   AdditiveBlending,
+  NormalBlending,
   Color,
   DoubleSide,
   Group,
@@ -14,7 +15,7 @@ import {
   type MeshBasicMaterial,
   type MeshPhysicalMaterial,
 } from 'three';
-import { accent, fog } from '@/lib/design/tokens';
+import { accent, fog, mark } from '@/lib/design/tokens';
 import { hairline, hologram } from '@/lib/design/materials';
 import { clamp, smoothstep } from '@/lib/math';
 import { useQuality } from '@/components/three/QualityProvider';
@@ -98,7 +99,14 @@ export default function MedicineCore({
         vertexShader: coreShellVertex,
         fragmentShader: coreShellFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         side: DoubleSide,
         uniforms: {
@@ -107,6 +115,9 @@ export default function MedicineCore({
           uTime: { value: 0 },
           uReveal: { value: 0 },
           uRimPower: { value: 2.6 },
+          uInkMode: { value: mark.additive ? 0 : 1 },
+          uInkColor: { value: new Color(accent.pharma.ink) },
+          uInkGain: { value: 5.5 },
           uFogDensity: { value: fog.density },
         },
       }),
@@ -119,7 +130,14 @@ export default function MedicineCore({
         vertexShader: coreShellVertex,
         fragmentShader: coreShellFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         side: DoubleSide,
         uniforms: {
@@ -129,6 +147,9 @@ export default function MedicineCore({
           uReveal: { value: 0 },
           // A softer falloff than the crystal, so this layer reads as haze.
           uRimPower: { value: 2.0 },
+          uInkMode: { value: mark.additive ? 0 : 1 },
+          uInkColor: { value: new Color(accent.pharma.ink) },
+          uInkGain: { value: 5.5 },
           uFogDensity: { value: fog.density },
         },
       }),
@@ -302,7 +323,7 @@ export default function MedicineCore({
       <group ref={cage}>
         <mesh>
           <icosahedronGeometry args={[1.12, detail + 1]} />
-          <meshBasicMaterial {...hairline(accent.pharma.base, 0)} />
+          <meshBasicMaterial {...hairline(accent.pharma.ink, 0)} />
         </mesh>
       </group>
 
@@ -311,7 +332,7 @@ export default function MedicineCore({
         {/* Equatorial ring */}
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[1.34, 0.0035, 4, 128]} />
-          <meshBasicMaterial {...hologram(accent.pharma.light, 0)} />
+          <meshBasicMaterial {...hologram(accent.pharma.ink, 0)} />
         </mesh>
 
         {/* Inclined ring — reads as a second measurement axis. */}
@@ -327,7 +348,7 @@ export default function MedicineCore({
           frustumCulled={false}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshBasicMaterial {...hologram(accent.pharma.light, 0)} />
+          <meshBasicMaterial {...hologram(accent.pharma.ink, 0)} />
         </instancedMesh>
       </group>
 

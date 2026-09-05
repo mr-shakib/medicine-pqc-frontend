@@ -7,9 +7,10 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  NormalBlending,
   type Points,
 } from 'three';
-import { fog, neutral } from '@/lib/design/tokens';
+import { accent, fog, mark, neutral } from '@/lib/design/tokens';
 import { mote } from '@/lib/design/materials';
 import { seededRandom } from '@/lib/math';
 import { SCENES } from '@/lib/scenes';
@@ -44,8 +45,14 @@ export default function Atmosphere({ count }: AtmosphereProps) {
     const colors = new Float32Array(count * 3);
     const span = depth.near - depth.far;
 
+    /*
+      Read here rather than from a module constant, so the cloud is built from
+      whichever palette is current. `n09` is a mid grey in BOTH ramps -- dim
+      against the dark chamber, and equally dim against paper -- which is the
+      whole point of addressing the ramp by role.
+    */
     const dim = new Color(neutral.n09);
-    const bright = new Color(mote.highlightColor);
+    const bright = new Color(accent.pharma.ink);
 
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (seededRandom(i * 1.7) - 0.5) * 76;
@@ -94,7 +101,7 @@ export default function Atmosphere({ count }: AtmosphereProps) {
           sizeAttenuation
           transparent
           opacity={mote.opacity}
-          blending={AdditiveBlending}
+          blending={mark.additive ? AdditiveBlending : NormalBlending}
           depthWrite={false}
           toneMapped={false}
         />

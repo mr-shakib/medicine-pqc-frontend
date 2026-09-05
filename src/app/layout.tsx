@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import SiteNav from '@/components/ui/SiteNav';
+import { DEFAULT_THEME } from '@/lib/design/palette';
+import { THEME_ATTRIBUTE, themeScript } from '@/lib/theme';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
@@ -36,8 +39,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#04070d',
-  colorScheme: 'dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f7f8fa' },
+    { media: '(prefers-color-scheme: dark)', color: '#06070a' },
+  ],
+  colorScheme: 'light dark',
   width: 'device-width',
   initialScale: 1,
   // The experience is scroll-driven; pinch-zoom stays available for a11y.
@@ -48,8 +54,29 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="antialiased">{children}</body>
+    /*
+      `suppressHydrationWarning` because the head script below rewrites
+      `data-theme` and `color-scheme` on this element before React ever sees
+      it. That is the point of the script -- it is the only way to have the
+      right palette on the first paint -- and the resulting difference from the
+      server's markup is expected rather than a bug to be reported.
+    */
+    <html
+      lang="en"
+      suppressHydrationWarning
+      {...{ [THEME_ATTRIBUTE]: DEFAULT_THEME }}
+      style={{ colorScheme: DEFAULT_THEME }}
+      className={`${geistSans.variable} ${geistMono.variable}`}
+    >
+      <head>
+        {/* Before the first paint, and before any bundle. See `themeScript`. */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="antialiased">
+        {/* Site-wide, so every route carries the same bar and the same way home. */}
+        <SiteNav />
+        {children}
+      </body>
     </html>
   );
 }

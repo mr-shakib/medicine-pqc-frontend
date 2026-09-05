@@ -3,7 +3,7 @@ import ExperienceLoader from '@/components/ui/ExperienceLoader';
 import ClosingSection from '@/components/ui/ClosingSection';
 import Footer from '@/components/ui/Footer';
 import Grade from '@/components/ui/Grade';
-import Nav from '@/components/ui/Nav';
+import RecordDossier from '@/components/ui/RecordDossier';
 import SceneRail from '@/components/ui/SceneRail';
 import TeamCredits from '@/components/ui/TeamCredits';
 
@@ -16,7 +16,8 @@ import TeamCredits from '@/components/ui/TeamCredits';
  *   3. ContentLayer     — the scrolling DOM spine that drives it
  *   4. ClosingSection   — the page after the story, once the canvas is behind
  *   5. TeamCredits      — the chapter 08 roster as a document
- *   6. Nav / SceneRail  — fixed chrome
+ *   6. SceneRail        — fixed chapter rail (the bar lives in the layout)
+ *   7. RecordDossier    — one team record, over everything, when one is open
  */
 export default function Home() {
   return (
@@ -31,13 +32,14 @@ export default function Home() {
       <ExperienceLoader />
       <Grade />
 
-      <Nav />
       <SceneRail />
 
       <ContentLayer />
       <ClosingSection />
       <TeamCredits />
       <Footer />
+
+      <RecordDossier />
     </>
   );
 }

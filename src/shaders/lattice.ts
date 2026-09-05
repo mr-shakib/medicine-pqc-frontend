@@ -51,6 +51,6 @@ export const latticeEdgeFragment = /* glsl */ `
     vec3 color = mix(uColor, uHighlightColor, vHighlight);
     float alpha = vAlpha * uOpacity * fogAmount * mix(1.0, 2.2, vHighlight);
 
-    gl_FragColor = vec4(color * alpha, 1.0);
+    gl_FragColor = vec4(color * alpha, alpha);
   }
 `;

@@ -1,18 +1,16 @@
 'use client';
 
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Color, type DirectionalLight, type PointLight } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { accent, light, neutral } from '@/lib/design/tokens';
 import { scrollStore } from '@/lib/scrollStore';
 import { SCENES, SCENE_COUNT, progressToSection } from '@/lib/scenes';
-import { lightRig, type LightSlot } from '@/lib/lightRig';
+import { lightRig, rebuildLightRigColors, type LightSlot } from '@/lib/lightRig';
 import { clamp } from '@/lib/math';
 
-/** Pre-resolved colours -- the frame loop must never allocate. */
-const SCENE_ACCENTS = SCENES.map((s) => new Color(accent[s.accent].base));
-
-const currentRim = new Color(accent.pharma.base);
+/** Scratch -- the frame loop must never allocate. */
+const currentRim = new Color();
 const targetColor = new Color();
 const upperColor = new Color();
 
@@ -48,6 +46,18 @@ export default function Lighting({ shadows }: LightingProps) {
   const accentA = useRef<PointLight>(null);
   const accentB = useRef<PointLight>(null);
 
+  /*
+    Resolved on mount, not at module scope: this component is rebuilt for each
+    palette, and the shared accent pool's colours have to be re-resolved with
+    it. A table built when the file was imported would still be lit by the
+    palette that happened to be active then.
+  */
+  const sceneAccents = useMemo(() => {
+    rebuildLightRigColors();
+    currentRim.set(accent.pharma.base);
+    return SCENES.map((scene) => new Color(accent[scene.accent].base));
+  }, []);
+
   useFrame(() => {
     applySlot(accentA.current, lightRig.slots[0]);
     applySlot(accentB.current, lightRig.slots[1]);
@@ -62,8 +72,8 @@ export default function Lighting({ shadows }: LightingProps) {
     const upper = Math.min(lower + 1, SCENE_COUNT - 1);
     const mix = section - lower;
 
-    targetColor.copy(SCENE_ACCENTS[lower]);
-    upperColor.copy(SCENE_ACCENTS[upper]);
+    targetColor.copy(sceneAccents[lower]);
+    upperColor.copy(sceneAccents[upper]);
     targetColor.lerp(upperColor, mix);
     currentRim.lerp(targetColor, 0.05);
 
@@ -75,7 +85,7 @@ export default function Lighting({ shadows }: LightingProps) {
       {/* KEY — large, warm, high and camera-right. */}
       <directionalLight
         position={[5.5, 8, 6]}
-        intensity={2.1}
+        intensity={light.keyIntensity}
         color={light.key}
         castShadow={shadows}
         shadow-mapSize={[1024, 1024]}
@@ -88,7 +98,7 @@ export default function Lighting({ shadows }: LightingProps) {
       {/* FILL — cool, opposite the key, roughly a quarter of its power. */}
       <directionalLight
         position={[-7, 2.5, 4]}
-        intensity={0.52}
+        intensity={light.fillIntensity}
         color={light.fill}
       />
 
@@ -96,7 +106,7 @@ export default function Lighting({ shadows }: LightingProps) {
       <directionalLight
         ref={rim}
         position={[-3, 5, -9]}
-        intensity={1.5}
+        intensity={light.rimIntensity}
         color={accent.pharma.base}
       />
 
@@ -113,7 +123,7 @@ export default function Lighting({ shadows }: LightingProps) {
         does with less reach.
       */}
       <hemisphereLight
-        args={[neutral.n06, light.bounce, 0.85]}
+        args={[neutral.n06, light.bounce, light.bounceIntensity]}
         position={[0, -4, 0]}
       />
 

@@ -7,6 +7,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  NormalBlending,
   DoubleSide,
   MeshStandardMaterial,
   Object3D,
@@ -17,7 +18,7 @@ import {
   type LineSegments,
   type Mesh,
 } from 'three';
-import { accent, fog } from '@/lib/design/tokens';
+import { accent, fog, mark } from '@/lib/design/tokens';
 import { emissive, hairline } from '@/lib/design/materials';
 import { buildLattice, type LatticeOptions } from '@/lib/geometry/lattice';
 import { latticeEdgeFragment, latticeEdgeVertex } from '@/shaders/lattice';
@@ -120,12 +121,21 @@ export default function CryptoLattice({
         vertexShader: latticeEdgeVertex,
         fragmentShader: latticeEdgeFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         uniforms: {
           uGrow: { value: 0 },
           uSoftness: { value: 0.55 },
-          uOpacity: { value: 0.52 },
+          // Scaled by the palette: ink does not accumulate the way added
+          // light does. See `density` in `lib/design/palette`.
+          uOpacity: { value: 0.52 * mark.density },
           uColor: { value: new Color(accent.lattice.base) },
           uHighlightColor: { value: new Color(accent.lattice.light) },
           uFogDensity: { value: fog.density },
@@ -143,7 +153,14 @@ export default function CryptoLattice({
         vertexShader: coreShellVertex,
         fragmentShader: coreShellFragment,
         transparent: true,
-        blending: AdditiveBlending,
+        /*
+          Additive on a dark ground, normal on a light one -- and premultiplied
+          either way, so the same program composites correctly under both. See
+          `hologram` in `lib/design/materials` for why a mark cannot simply be
+          added to paper.
+        */
+        blending: mark.additive ? AdditiveBlending : NormalBlending,
+        premultipliedAlpha: true,
         depthWrite: false,
         side: DoubleSide,
         uniforms: {
@@ -262,7 +279,7 @@ export default function CryptoLattice({
       {/* The cryptographic boundary: a faceted polytope, not a dome. */}
       <mesh ref={boundary}>
         <icosahedronGeometry args={[1, detail]} />
-        <meshBasicMaterial {...hairline(accent.lattice.light, 0)} />
+        <meshBasicMaterial {...hairline(accent.lattice.ink, 0)} />
       </mesh>
 
       {/* The field itself — a thin surface, not a volume. */}

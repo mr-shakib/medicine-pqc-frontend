@@ -35,7 +35,8 @@ export const scanPlaneFragment = /* glsl */ `
 
     float edge = 1.0 - pow(abs(vUv.x - 0.5) * 2.0, 3.0);
 
-    gl_FragColor = vec4(uColor * band * edge * uOpacity, 1.0);
+    float out_ = band * edge * uOpacity;
+    gl_FragColor = vec4(uColor * out_, out_);
   }
 `;
 
@@ -132,7 +133,7 @@ export const signatureFragment = /* glsl */ `
     float alpha = max(line, rule) * vShown;
 
     if (alpha < 0.004) discard;
-    gl_FragColor = vec4(color * alpha, 1.0);
+    gl_FragColor = vec4(color * alpha, alpha);
   }
 `;
 
@@ -212,6 +213,7 @@ export const featureFragment = /* glsl */ `
     float d = length(gl_PointCoord - 0.5);
     float dot_ = smoothstep(0.5, 0.1, d);
     vec3 color = mix(uCounterfeitColor, uColor, vAuthentic);
-    gl_FragColor = vec4(color * dot_ * vAlpha * 0.9, 1.0);
+    float out_ = dot_ * vAlpha * 0.9;
+    gl_FragColor = vec4(color * out_, out_);
   }
 `;

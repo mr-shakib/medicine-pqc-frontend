@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { NAV_LINKS } from '@/lib/navigation';
 import { PROJECT } from '@/lib/team';
 
 /** Closing band below the scroll spine. */
@@ -17,11 +19,26 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:items-end">
-          <p className="eyebrow text-n09">Built with</p>
-          <p className="eyebrow text-n10">
-            Next.js · Three.js · R3F
-          </p>
+        <div className="flex flex-col gap-6 sm:items-end">
+          <nav aria-label="Sections">
+            <ul className="flex gap-6">
+              {NAV_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="eyebrow text-n10 transition-colors duration-300 hover:text-n12"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="flex flex-col gap-2 sm:items-end">
+            <p className="eyebrow text-n09">Built with</p>
+            <p className="eyebrow text-n10">Next.js · Three.js · R3F</p>
+          </div>
         </div>
       </div>
     </footer>

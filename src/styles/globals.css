@@ -5,47 +5,73 @@
 /* Mirrors src/lib/design/tokens.ts. Both layers must grade identically.      */
 /* See DESIGN_SYSTEM.md for the reasoning behind every value.                 */
 /* ========================================================================== */
-@theme {
-  /* --- Neutral ramp: cool-cast, hue ~220 ---------------------------------- */
-  --color-n00: #06070a;
-  --color-n01: #090b0f;
-  --color-n02: #0d0f15;
-  --color-n03: #11141b;
-  --color-n04: #161a22;
-  --color-n05: #1c212a;
-  --color-n06: #242a35;
-  --color-n07: #2f3542;
-  --color-n08: #414957;
-  --color-n09: #5c6474;
-  --color-n10: #8a93a3;
-  --color-n11: #b9c0cc;
-  --color-n12: #e9ecf1;
+/*
+  `static` because several of these are only ever read through a dynamic
+  `var(--color-<family>-ink)` built in TypeScript, never through a utility
+  class. Tailwind drops theme variables it cannot see being used, so without
+  this the ink steps were emitted for the dark palette -- hand-written CSS
+  below, which is never tree-shaken -- and silently missing for the light one.
+  The symptom was a chapter marker rule that existed in the dark and simply was
+  not there in the light.
+*/
+@theme static {
+  /*
+    The LIGHT palette is the default, and the values here are the ones Tailwind
+    generates its utilities from. The dark palette overrides the same custom
+    properties further down.
 
-  /* --- Accents: saturation 23-45%, lightness 51-58% ----------------------- */
-  --color-pharma-deep: #6e5030;
-  --color-pharma: #be8b4e;
-  --color-pharma-light: #dfb98a;
-  --color-pharma-glow: #f2dcbc;
+    Both ramps are addressed by ROLE, not by lightness: n00 is always the
+    ground the page sits on and n12 is always primary type, whichever way round
+    those happen to be. That is what lets one set of classes -- `bg-n00`,
+    `text-n12`, `border-n06` -- serve both palettes with no variants anywhere
+    in the markup. Mirrors src/lib/design/palette.ts.
+  */
 
-  --color-analysis-deep: #1f4c56;
-  --color-analysis: #5c9aa8;
-  --color-analysis-light: #96c4ce;
-  --color-analysis-glow: #c6e2e8;
+  /* --- Neutral ramp: cool-cast, hue ~220, light ground -------------------- */
+  --color-n00: #f7f8fa;
+  --color-n01: #f2f4f7;
+  --color-n02: #ebeef2;
+  --color-n03: #e3e7ed;
+  --color-n04: #d9dee6;
+  --color-n05: #ccd3dc;
+  --color-n06: #b8c1cd;
+  --color-n07: #a0abba;
+  --color-n08: #8390a1;
+  --color-n09: #626d7d;
+  --color-n10: #4c5666;
+  --color-n11: #2e3643;
+  --color-n12: #131922;
 
-  --color-lattice-deep: #33356b;
-  --color-lattice: #6e70b8;
-  --color-lattice-light: #a3a5d8;
-  --color-lattice-glow: #cfd0ec;
+  /* --- Accents: deepened so they carry on paper --------------------------- */
+  --color-pharma-deep: #4a3418;
+  --color-pharma: #8c6224;
+  --color-pharma-light: #b98a45;
+  --color-pharma-glow: #d9b37c;
+  --color-pharma-ink: #6e4c18;
 
-  --color-alert-deep: #6e2a28;
-  --color-alert: #c0605a;
-  --color-alert-light: #dc908b;
-  --color-alert-glow: #f0c0bc;
+  --color-analysis-deep: #123840;
+  --color-analysis: #2e6b78;
+  --color-analysis-light: #5c9aa8;
+  --color-analysis-glow: #96c4ce;
+  --color-analysis-ink: #1c4e58;
 
-  --color-verified-deep: #2c5240;
-  --color-verified: #6fa588;
-  --color-verified-light: #a3c9b4;
-  --color-verified-glow: #cfe3d8;
+  --color-lattice-deep: #242657;
+  --color-lattice: #454796;
+  --color-lattice-light: #6e70b8;
+  --color-lattice-glow: #a3a5d8;
+  --color-lattice-ink: #33356b;
+
+  --color-alert-deep: #5a1b19;
+  --color-alert: #9c3a34;
+  --color-alert-light: #c0605a;
+  --color-alert-glow: #dc908b;
+  --color-alert-ink: #7a2622;
+
+  --color-verified-deep: #1e3d2d;
+  --color-verified: #3e7359;
+  --color-verified-light: #6fa588;
+  --color-verified-glow: #a3c9b4;
+  --color-verified-ink: #2c5240;
 
   /* --- Fluid type scale --------------------------------------------------- */
   --text-display-xl: clamp(2.75rem, 7.5vw, 7rem);
@@ -65,12 +91,102 @@
 }
 
 /* ========================================================================== */
+/* DARK                                                                       */
+/*                                                                            */
+/* The original chamber. Only the colour properties move; every size, weight  */
+/* and easing above is shared, because none of them are a property of the     */
+/* light in the room.                                                         */
+/*                                                                            */
+/* `html[data-theme='dark']` outranks the `:root` that `@theme` compiles to,  */
+/* so these win without any `!important`.                                     */
+/* ========================================================================== */
+
+html[data-theme='dark'] {
+  --color-n00: #06070a;
+  --color-n01: #090b0f;
+  --color-n02: #0d0f15;
+  --color-n03: #11141b;
+  --color-n04: #161a22;
+  --color-n05: #1c212a;
+  --color-n06: #242a35;
+  --color-n07: #2f3542;
+  --color-n08: #414957;
+  --color-n09: #5c6474;
+  --color-n10: #8a93a3;
+  --color-n11: #b9c0cc;
+  --color-n12: #e9ecf1;
+
+  --color-pharma-deep: #6e5030;
+  --color-pharma: #be8b4e;
+  --color-pharma-light: #dfb98a;
+  --color-pharma-glow: #f2dcbc;
+  --color-pharma-ink: #dfb98a;
+
+  --color-analysis-deep: #1f4c56;
+  --color-analysis: #5c9aa8;
+  --color-analysis-light: #96c4ce;
+  --color-analysis-glow: #c6e2e8;
+  --color-analysis-ink: #96c4ce;
+
+  --color-lattice-deep: #33356b;
+  --color-lattice: #6e70b8;
+  --color-lattice-light: #a3a5d8;
+  --color-lattice-glow: #cfd0ec;
+  --color-lattice-ink: #a3a5d8;
+
+  --color-alert-deep: #6e2a28;
+  --color-alert: #c0605a;
+  --color-alert-light: #dc908b;
+  --color-alert-glow: #f0c0bc;
+  --color-alert-ink: #dc908b;
+
+  --color-verified-deep: #2c5240;
+  --color-verified: #6fa588;
+  --color-verified-light: #a3c9b4;
+  --color-verified-glow: #cfe3d8;
+  --color-verified-ink: #a3c9b4;
+}
+
+/* ========================================================================== */
 /* BASE                                                                       */
 /* ========================================================================== */
 :root {
+  /* The blocking script in the document head sets the real value before the
+     first paint; this is only the fallback if scripting is off. */
+  color-scheme: light;
+  /* Accent of the active chapter, written each chapter by `ScrollSampler`. */
+  --scene-accent: #8c6224;
+}
+
+html[data-theme='dark'] {
   color-scheme: dark;
-  /* Accent of the active chapter, written each chapter by ScrollController. */
   --scene-accent: #be8b4e;
+}
+
+/*
+  Colour crossfades ONLY while the theme is actually changing.
+
+  The class is added for the length of the swap and taken off again. Leaving a
+  global colour transition on permanently would put one on every element for
+  the life of the page -- including the chapter accent, which is written sixty
+  times a second and already carries its own timing -- and would fade the very
+  first paint in from nothing. Position and size are never transitioned: the
+  swap rebuilds the 3D scene behind this, and a page whose layout also eased
+  would read as a reflow.
+*/
+html.theme-shift,
+html.theme-shift * {
+  transition:
+    background-color 320ms var(--ease-out-premium),
+    border-color 320ms var(--ease-out-premium),
+    color 320ms var(--ease-out-premium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-shift,
+  html.theme-shift * {
+    transition: none;
+  }
 }
 
 html {
@@ -235,6 +351,33 @@ body {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Palette swap                                                                */
+/*                                                                             */
+/* The 3D world is rebuilt when the theme changes, and a rebuild is visible:    */
+/* the first few frames draw a scene whose shaders are still compiling. This    */
+/* holds the ground colour over it and lifts. It runs on first load too, where  */
+/* it doubles as the page settling in -- the canvas is not ready then either.   */
+/* -------------------------------------------------------------------------- */
+@keyframes theme-settle {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.theme-scrim {
+  animation: theme-settle 560ms var(--ease-out-premium) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-scrim {
+    animation-duration: 1ms;
+  }
+}
+
 /* ========================================================================== */
 /* SURFACES                                                                   */
 /*                                                                            */
@@ -253,6 +396,40 @@ body {
 /** A single hairline in the neutral ramp's border step. */
 @utility hairline-b {
   border-bottom: 1px solid color-mix(in oklab, var(--color-n12) 6%, transparent);
+}
+
+/* ========================================================================== */
+/* DOSSIER                                                                    */
+/*                                                                            */
+/* While a team record is open it is the only thing on the page. The fixed    */
+/* chrome -- the wordmark, the chapter readout, the chapter rail -- describes  */
+/* a scroll position the dossier has taken control of, so it recedes rather   */
+/* than sitting on top of the panel contradicting it.                         */
+/* ========================================================================== */
+
+.chrome-fade {
+  transition:
+    opacity 400ms var(--ease-out-premium),
+    visibility 400ms;
+}
+
+html[data-dossier] .chrome-fade {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/*
+  The chapter's own copy goes with it. The dossier stands its subject in the
+  half of the frame the panel leaves, and that is the same half the chapter
+  headline occupies -- so left up, the statement reads straight across the
+  face of the person the panel is describing.
+*/
+[data-scroll-spine] {
+  transition: opacity 400ms var(--ease-out-premium);
+}
+
+html[data-dossier] [data-scroll-spine] {
+  opacity: 0;
 }
 
 /* ========================================================================== */
